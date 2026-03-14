@@ -1,0 +1,6 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Sun Mar 15 02:08:32 IST 2026
+@default-central-https\://repo.maven.apache.org/maven2/.lastUpdated=1773520712287
+@default-maven-ado-ol-lib-develop-https\://artifacts.karops.io/artifactory/ol-libs-develop/.lastUpdated=1773520712086
+https\://repo.maven.apache.org/maven2/.error=Could not transfer artifact org.springframework.boot\:spring-boot-starter-parent\:pom\:4.0.3 from/to central (https\://repo.maven.apache.org/maven2)\: Transfer failed for https\://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-starter-parent/4.0.3/spring-boot-starter-parent-4.0.3.pom
+https\://artifacts.karops.io/artifactory/ol-libs-develop/.error=Could not transfer artifact org.springframework.boot\:spring-boot-starter-parent\:pom\:4.0.3 from/to maven-ado-ol-lib-develop (https\://artifacts.karops.io/artifactory/ol-libs-develop/)\: Transfer failed for https\://artifacts.karops.io/artifactory/ol-libs-develop/org/springframework/boot/spring-boot-starter-parent/4.0.3/spring-boot-starter-parent-4.0.3.pom
