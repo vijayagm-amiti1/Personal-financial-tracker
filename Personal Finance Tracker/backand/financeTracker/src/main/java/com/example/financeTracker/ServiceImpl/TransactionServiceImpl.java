@@ -1,7 +1,7 @@
 package com.example.financeTracker.ServiceImpl;
 
-import com.example.financeTracker.DTO.CreateTransactionRequest;
-import com.example.financeTracker.DTO.TransactionResponse;
+import com.example.financeTracker.DTO.RequestDTO.TransactionRequest;
+import com.example.financeTracker.DTO.ResponseDTO.TransactionResponse;
 import com.example.financeTracker.Entity.Account;
 import com.example.financeTracker.Entity.Category;
 import com.example.financeTracker.Entity.Transaction;
@@ -11,8 +11,8 @@ import com.example.financeTracker.Repository.CategoryRepository;
 import com.example.financeTracker.Repository.TransactionRepository;
 import com.example.financeTracker.Repository.UserRepository;
 import com.example.financeTracker.Service.TransactionService;
-import com.example.financeTracker.exception.BadRequestException;
-import com.example.financeTracker.exception.ResourceNotFoundException;
+import com.example.financeTracker.Exception.BadRequestException;
+import com.example.financeTracker.Exception.ResourceNotFoundException;
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.List;
@@ -36,47 +36,17 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional
-    public TransactionResponse createTransaction(CreateTransactionRequest request, UUID userId) {
+    public TransactionResponse createTransaction(TransactionRequest request, UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        Account account = accountRepository.findByIdAndUserId(request.getAccountId(), userId)
-                .orElseThrow(() -> new ResourceNotFoundException("accountId does not exist for this user"));
-
-        Category category = resolveCategory(request.getCategoryId(), userId);
         String normalizedType = request.getType().trim().toLowerCase(Locale.ROOT);
+        Account account = getRequiredAccount(request.getAccountId(), userId, "accountId");
+        Account toAccount = resolveToAccount(request, userId, normalizedType);
+        Category category = resolveCategory(request.getCategoryId(), userId);
 
-        Transaction transaction = Transaction.builder()
-                .user(user)
-                .account(account)
-                .category(category)
-                .type(normalizedType)
-                .amount(request.getAmount())
-                .transactionDate(request.getDate())
-                .merchant(request.getMerchant())
-                .note(request.getNote())
-                .paymentMethod(request.getPaymentMethod())
-                .build();
-
-        switch (normalizedType) {
-            case "expense" -> account.setCurrentBalance(account.getCurrentBalance().subtract(request.getAmount()));
-            case "income" -> account.setCurrentBalance(account.getCurrentBalance().add(request.getAmount()));
-            case "transfer" -> {
-                Account toAccount = accountRepository.findByIdAndUserId(request.getToAccountId(), userId)
-                        .orElseThrow(() -> new ResourceNotFoundException("toAccountId does not exist for this user"));
-                account.setCurrentBalance(account.getCurrentBalance().subtract(request.getAmount()));
-                toAccount.setCurrentBalance(toAccount.getCurrentBalance().add(request.getAmount()));
-                transaction.setToAccount(toAccount);
-                accountRepository.save(toAccount);
-            }
-            default -> throw new BadRequestException("Unsupported transaction type: " + request.getType());
-        }
-
-        if (account.getCurrentBalance().signum() < 0) {
-            throw new BadRequestException("Insufficient balance in source account");
-        }
-
-        accountRepository.save(account);
+        Transaction transaction = buildTransaction(user, account, toAccount, category, request, normalizedType);
+        applyTransactionEffect(transaction, true);
+        persistTouchedAccounts(account, toAccount);
         Transaction savedTransaction = transactionRepository.save(transaction);
 
         if (request.getTags() != null && !request.getTags().isEmpty()) {
@@ -86,6 +56,65 @@ public class TransactionServiceImpl implements TransactionService {
 
         log.info("Created {} transaction {} for user {}", normalizedType, savedTransaction.getId(), userId);
         return mapToResponse(savedTransaction);
+    }
+
+    @Override
+    @Transactional
+    public TransactionResponse updateTransaction(UUID transactionId, TransactionRequest request, UUID userId) {
+        Transaction existingTransaction = transactionRepository.findByIdAndUserId(transactionId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found for this user"));
+
+        String normalizedType = request.getType().trim().toLowerCase(Locale.ROOT);
+        Account newAccount = getRequiredAccount(request.getAccountId(), userId, "accountId");
+        Account newToAccount = resolveToAccount(request, userId, normalizedType);
+        Category newCategory = resolveCategory(request.getCategoryId(), userId);
+        Account previousAccount = existingTransaction.getAccount();
+        Account previousToAccount = existingTransaction.getToAccount();
+
+        revertTransactionEffect(existingTransaction);
+
+        existingTransaction.setAccount(newAccount);
+        existingTransaction.setToAccount(newToAccount);
+        existingTransaction.setCategory(newCategory);
+        existingTransaction.setType(normalizedType);
+        existingTransaction.setAmount(request.getAmount());
+        existingTransaction.setTransactionDate(request.getDate());
+        existingTransaction.setMerchant(request.getMerchant());
+        existingTransaction.setNote(request.getNote());
+        existingTransaction.setPaymentMethod(request.getPaymentMethod());
+
+        applyTransactionEffect(existingTransaction, false);
+        persistTouchedAccounts(previousAccount, previousToAccount, existingTransaction.getAccount(), existingTransaction.getToAccount());
+
+        Transaction updatedTransaction = transactionRepository.save(existingTransaction);
+
+        if (request.getTags() != null && !request.getTags().isEmpty()) {
+            log.info("Transaction {} received tags {} during update but tags are not persisted in the current schema",
+                    updatedTransaction.getId(), request.getTags());
+        }
+
+        log.info("Updated transaction {} for user {}", updatedTransaction.getId(), userId);
+        return mapToResponse(updatedTransaction);
+    }
+
+    private Transaction buildTransaction(User user,
+                                         Account account,
+                                         Account toAccount,
+                                         Category category,
+                                         TransactionRequest request,
+                                         String normalizedType) {
+        return Transaction.builder()
+                .user(user)
+                .account(account)
+                .toAccount(toAccount)
+                .category(category)
+                .type(normalizedType)
+                .amount(request.getAmount())
+                .transactionDate(request.getDate())
+                .merchant(request.getMerchant())
+                .note(request.getNote())
+                .paymentMethod(request.getPaymentMethod())
+                .build();
     }
 
     @Override
@@ -123,6 +152,79 @@ public class TransactionServiceImpl implements TransactionService {
         }
         return categoryRepository.findByIdAndUserId(categoryId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("categoryId does not exist for this user"));
+    }
+
+    private Account resolveToAccount(TransactionRequest request, UUID userId, String normalizedType) {
+        if (!"transfer".equals(normalizedType)) {
+            return null;
+        }
+        return getRequiredAccount(request.getToAccountId(), userId, "toAccountId");
+    }
+
+    private Account getRequiredAccount(UUID accountId, UUID userId, String fieldName) {
+        return accountRepository.findByIdAndUserId(accountId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException(fieldName + " does not exist for this user"));
+    }
+
+    private void applyTransactionEffect(Transaction transaction, boolean enforceNonNegativeBalance) {
+        switch (transaction.getType()) {
+            case "expense" -> {
+                transaction.getAccount().setCurrentBalance(
+                        transaction.getAccount().getCurrentBalance().subtract(transaction.getAmount()));
+                if (enforceNonNegativeBalance) {
+                    ensureNonNegativeBalance(transaction.getAccount(), "source");
+                }
+            }
+            case "income" -> transaction.getAccount().setCurrentBalance(
+                    transaction.getAccount().getCurrentBalance().add(transaction.getAmount()));
+            case "transfer" -> {
+                if (transaction.getToAccount() == null) {
+                    throw new BadRequestException("toAccountId is required when type is transfer");
+                }
+                transaction.getAccount().setCurrentBalance(
+                        transaction.getAccount().getCurrentBalance().subtract(transaction.getAmount()));
+                transaction.getToAccount().setCurrentBalance(
+                        transaction.getToAccount().getCurrentBalance().add(transaction.getAmount()));
+                if (enforceNonNegativeBalance) {
+                    ensureNonNegativeBalance(transaction.getAccount(), "source");
+                }
+            }
+            default -> throw new BadRequestException("Unsupported transaction type: " + transaction.getType());
+        }
+    }
+
+    private void revertTransactionEffect(Transaction transaction) {
+        switch (transaction.getType()) {
+            case "expense" -> transaction.getAccount().setCurrentBalance(
+                    transaction.getAccount().getCurrentBalance().add(transaction.getAmount()));
+            case "income" -> transaction.getAccount().setCurrentBalance(
+                    transaction.getAccount().getCurrentBalance().subtract(transaction.getAmount()));
+            case "transfer" -> {
+                if (transaction.getToAccount() == null) {
+                    throw new BadRequestException("Stored transfer transaction is missing destination account");
+                }
+                transaction.getAccount().setCurrentBalance(
+                        transaction.getAccount().getCurrentBalance().add(transaction.getAmount()));
+                transaction.getToAccount().setCurrentBalance(
+                        transaction.getToAccount().getCurrentBalance().subtract(transaction.getAmount()));
+            }
+            default -> throw new BadRequestException("Unsupported transaction type: " + transaction.getType());
+        }
+    }
+
+    private void ensureNonNegativeBalance(Account account, String accountRole) {
+        if (account.getCurrentBalance().signum() < 0) {
+            throw new BadRequestException("Insufficient balance in " + accountRole + " account");
+        }
+    }
+
+    private void persistTouchedAccounts(Account... accounts) {
+        for (Account account : accounts) {
+            if (account == null) {
+                continue;
+            }
+            accountRepository.save(account);
+        }
     }
 
     private TransactionResponse mapToResponse(Transaction transaction) {

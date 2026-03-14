@@ -1,7 +1,7 @@
 package com.example.financeTracker.Service;
 
-import com.example.financeTracker.DTO.CreateTransactionRequest;
-import com.example.financeTracker.DTO.TransactionResponse;
+import com.example.financeTracker.DTO.RequestDTO.TransactionRequest;
+import com.example.financeTracker.DTO.ResponseDTO.TransactionResponse;
 import com.example.financeTracker.Entity.Transaction;
 import java.time.LocalDate;
 import java.util.List;
@@ -10,7 +10,9 @@ import java.util.UUID;
 
 public interface TransactionService {
 
-    TransactionResponse createTransaction(CreateTransactionRequest request, UUID userId);
+    TransactionResponse createTransaction(TransactionRequest request, UUID userId);
+
+    TransactionResponse updateTransaction(UUID transactionId, TransactionRequest request, UUID userId);
 
     Transaction saveTransaction(Transaction transaction);
 

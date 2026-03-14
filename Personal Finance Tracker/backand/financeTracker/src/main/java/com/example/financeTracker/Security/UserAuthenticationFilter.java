@@ -1,7 +1,7 @@
-package com.example.financeTracker.security;
+package com.example.financeTracker.Security;
 
 import com.example.financeTracker.Repository.UserRepository;
-import com.example.financeTracker.exception.UnauthorizedException;
+import com.example.financeTracker.Exception.UnauthorizedException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +11,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
@@ -21,6 +22,7 @@ public class UserAuthenticationFilter extends OncePerRequestFilter {
     private static final String USER_ID_HEADER = "X-USER-ID";
 
     private final UserRepository userRepository;
+    private final HandlerExceptionResolver handlerExceptionResolver;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -32,25 +34,29 @@ public class UserAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            String rawUserId = request.getHeader(USER_ID_HEADER);
-            if (rawUserId == null || rawUserId.isBlank()) {
-                throw new UnauthorizedException("Missing X-USER-ID header");
-            }
-
-            UUID userId;
             try {
-                userId = UUID.fromString(rawUserId);
-            } catch (IllegalArgumentException exception) {
-                throw new UnauthorizedException("Invalid X-USER-ID header");
-            }
+                String rawUserId = request.getHeader(USER_ID_HEADER);
+                if (rawUserId == null || rawUserId.isBlank()) {
+                    throw new UnauthorizedException("Missing X-USER-ID header");
+                }
 
-            if (!userRepository.existsById(userId)) {
-                throw new UnauthorizedException("Authenticated user does not exist");
-            }
+                UUID userId;
+                try {
+                    userId = UUID.fromString(rawUserId);
+                } catch (IllegalArgumentException exception) {
+                    throw new UnauthorizedException("Invalid X-USER-ID header");
+                }
 
-            CurrentUserContext.setUserId(userId);
-            log.debug("Authenticated request for user {}", userId);
-            filterChain.doFilter(request, response);
+                if (!userRepository.existsById(userId)) {
+                    throw new UnauthorizedException("Authenticated user does not exist");
+                }
+
+                CurrentUserContext.setUserId(userId);
+                log.debug("Authenticated request for user {}", userId);
+                filterChain.doFilter(request, response);
+            } catch (Exception exception) {
+                handlerExceptionResolver.resolveException(request, response, null, exception);
+            }
         } finally {
             CurrentUserContext.clear();
         }

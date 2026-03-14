@@ -1,4 +1,4 @@
-package com.example.financeTracker.security;
+package com.example.financeTracker.Security;
 
 import java.util.UUID;
 

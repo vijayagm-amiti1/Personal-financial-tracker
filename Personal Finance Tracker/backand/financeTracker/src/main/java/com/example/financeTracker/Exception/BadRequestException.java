@@ -1,4 +1,4 @@
-package com.example.financeTracker.exception;
+package com.example.financeTracker.Exception;
 
 public class BadRequestException extends RuntimeException {
 

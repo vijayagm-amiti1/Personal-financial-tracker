@@ -1,4 +1,4 @@
-package com.example.financeTracker.DTO;
+package com.example.financeTracker.DTO.RequestDTO;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.AssertTrue;
@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CreateTransactionRequest {
+public class TransactionRequest {
 
     @NotBlank(message = "type is required")
     private String type;

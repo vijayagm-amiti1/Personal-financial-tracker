@@ -1,4 +1,4 @@
-package com.example.financeTracker.DTO;
+package com.example.financeTracker.DTO.ResponseDTO;
 
 import java.time.LocalDateTime;
 import java.util.Map;
