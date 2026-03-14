@@ -16,7 +16,8 @@ public class TransactionAuthenticationAspect {
 
     @Before("execution(* com.example.financeTracker.controller.TransactionController.*(..))"
             + " || execution(* com.example.financeTracker.Service.TransactionService.createTransaction(..))"
-            + " || execution(* com.example.financeTracker.Service.TransactionService.updateTransaction(..))")
+            + " || execution(* com.example.financeTracker.Service.TransactionService.updateTransaction(..))"
+            + " || execution(* com.example.financeTracker.Service.TransactionService.deleteTransaction(..))")
     public void ensureAuthenticatedTransactionAccess(JoinPoint joinPoint) {
         UUID currentUserId = CurrentUserContext.getUserId();
         if (currentUserId == null) {

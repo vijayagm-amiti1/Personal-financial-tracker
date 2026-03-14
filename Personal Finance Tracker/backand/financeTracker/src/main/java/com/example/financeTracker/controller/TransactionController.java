@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,5 +41,13 @@ public class TransactionController {
         log.info("Received update transaction request for user {} and transaction {}", userId, transactionId);
         TransactionResponse response = transactionService.updateTransaction(transactionId, request, userId);
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{transactionId}")
+    public ResponseEntity<Void> deleteTransaction(@PathVariable UUID transactionId) {
+        UUID userId = CurrentUserContext.getUserId();
+        log.info("Received delete transaction request for user {} and transaction {}", userId, transactionId);
+        transactionService.deleteTransaction(transactionId, userId);
+        return ResponseEntity.noContent().build();
     }
 }

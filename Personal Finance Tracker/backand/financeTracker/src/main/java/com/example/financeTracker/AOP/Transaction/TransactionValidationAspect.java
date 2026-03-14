@@ -1,9 +1,13 @@
 package com.example.financeTracker.AOP.Transaction;
 
-import com.example.financeTracker.DTO.RequestDTO.TransactionRequest;
 import com.example.financeTracker.Exception.BadRequestException;
+import com.example.financeTracker.Exception.ResourceNotFoundException;
+import com.example.financeTracker.Repository.TransactionRepository;
+import com.example.financeTracker.Repository.UserRepository;
+import com.example.financeTracker.DTO.RequestDTO.TransactionRequest;
 import java.math.BigDecimal;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
@@ -12,8 +16,12 @@ import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class TransactionValidationAspect {
+
+    private final UserRepository userRepository;
+    private final TransactionRepository transactionRepository;
 
     @Before("(execution(* com.example.financeTracker.Service.TransactionService.createTransaction(..)) && args(request, userId))"
             + " || (execution(* com.example.financeTracker.Service.TransactionService.updateTransaction(..)) && args(transactionId, request, userId))")
@@ -44,5 +52,23 @@ public class TransactionValidationAspect {
         }
 
         log.debug("Validated transaction request for user {} in {}", userId, joinPoint.getSignature().toShortString());
+    }
+
+    @Before("execution(* com.example.financeTracker.Service.TransactionService.deleteTransaction(..)) && args(transactionId, userId)")
+    public void validateDeleteTransaction(JoinPoint joinPoint, UUID transactionId, UUID userId) {
+        if (userId == null) {
+            throw new BadRequestException("Authenticated user is required");
+        }
+        if (transactionId == null) {
+            throw new BadRequestException("transactionId is required");
+        }
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found");
+        }
+        if (transactionRepository.findByIdAndUserId(transactionId, userId).isEmpty()) {
+            throw new ResourceNotFoundException("Transaction not found for this user");
+        }
+
+        log.debug("Validated delete transaction request for user {} in {}", userId, joinPoint.getSignature().toShortString());
     }
 }

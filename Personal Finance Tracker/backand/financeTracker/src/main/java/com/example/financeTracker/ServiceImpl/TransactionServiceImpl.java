@@ -142,8 +142,13 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public void deleteTransaction(UUID transactionId, UUID userId) {
-        transactionRepository.findByIdAndUserId(transactionId, userId)
-                .ifPresent(transactionRepository::delete);
+        Transaction transaction = transactionRepository.findByIdAndUserId(transactionId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found for this user"));
+
+        revertTransactionEffect(transaction);
+        persistTouchedAccounts(transaction.getAccount(), transaction.getToAccount());
+        transactionRepository.delete(transaction);
+        log.info("Deleted transaction {} for user {}", transactionId, userId);
     }
 
     private Category resolveCategory(UUID categoryId, UUID userId) {
