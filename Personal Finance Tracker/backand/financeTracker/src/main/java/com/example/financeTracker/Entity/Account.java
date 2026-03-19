@@ -51,6 +51,10 @@ public class Account {
     @Column(name = "institution_name", length = 120)
     private String institutionName;
 
+    @Builder.Default
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -61,6 +65,9 @@ public class Account {
         }
         if (currentBalance == null) {
             currentBalance = BigDecimal.ZERO;
+        }
+        if (isActive == null) {
+            isActive = true;
         }
         if (createdAt == null) {
             createdAt = LocalDateTime.now();

@@ -18,7 +18,7 @@ function formatCurrency(value: number) {
 
 function GoalsPage() {
   const navigate = useNavigate()
-  const { goals, accounts, contributeToGoal, deleteGoal } = useDevelopmentBootstrap()
+  const { goals, activeAccounts, contributeToGoal, deleteGoal } = useDevelopmentBootstrap()
   const [selectedGoal, setSelectedGoal] = useState<DevGoal | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [targetDateCutoff, setTargetDateCutoff] = useState('')
@@ -156,7 +156,7 @@ function GoalsPage() {
       {selectedGoal ? (
         <GoalContributionPanel
           goal={selectedGoal}
-          accounts={accounts}
+          accounts={activeAccounts}
           onCancel={() => setSelectedGoal(null)}
           onSubmit={handleContribution}
         />

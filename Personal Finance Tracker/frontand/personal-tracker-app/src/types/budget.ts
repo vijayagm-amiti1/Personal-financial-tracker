@@ -8,7 +8,7 @@ export type BudgetRecord = {
   month: number
   year: number
   amount: number
-  currentSpent: number
+  moneySpent: number
   spentAmount: number
   remainingAmount: number
   spentPercent: number

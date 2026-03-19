@@ -22,7 +22,7 @@ public class BudgetResponse {
     private Integer month;
     private Integer year;
     private BigDecimal amount;
-    private BigDecimal currentSpent;
+    private BigDecimal moneySpent;
     private BigDecimal spentAmount;
     private BigDecimal remainingAmount;
     private Double spentPercent;

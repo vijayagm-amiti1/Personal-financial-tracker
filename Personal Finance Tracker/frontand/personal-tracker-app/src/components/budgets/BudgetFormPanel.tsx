@@ -80,6 +80,31 @@ function BudgetFormPanel({
       return
     }
 
+    const parsedAmount = Number(values.amount)
+    const parsedMonth = Number(values.month)
+    const parsedYear = Number(values.year)
+    const parsedAlertThreshold = Number(values.alertThresholdPercent)
+
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setError('Budget amount must be greater than 0.')
+      return
+    }
+
+    if (!Number.isInteger(parsedMonth) || parsedMonth < 1 || parsedMonth > 12) {
+      setError('Month must be between 1 and 12.')
+      return
+    }
+
+    if (!Number.isInteger(parsedYear) || parsedYear < 2000) {
+      setError('Year must be valid.')
+      return
+    }
+
+    if (!Number.isFinite(parsedAlertThreshold) || parsedAlertThreshold <= 0) {
+      setError('Alert threshold must be greater than 0.')
+      return
+    }
+
     try {
       setError(null)
       setIsSaving(true)

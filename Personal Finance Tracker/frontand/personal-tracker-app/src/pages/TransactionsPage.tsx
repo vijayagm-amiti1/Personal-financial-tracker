@@ -29,7 +29,7 @@ function formatCurrency(value: number) {
 
 function TransactionsPage() {
   const navigate = useNavigate()
-  const { user, accounts, categories, createCategory } = useDevelopmentBootstrap()
+  const { user, accounts, activeAccounts, categories, createCategory } = useDevelopmentBootstrap()
   const [editingTransaction, setEditingTransaction] = useState<TransactionRecord | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -49,7 +49,7 @@ function TransactionsPage() {
     reload,
   } = useTransactionsData({
     userId: user.id,
-    accounts,
+    accounts: activeAccounts,
     categories,
   })
 
@@ -129,7 +129,7 @@ function TransactionsPage() {
 
       <TransactionFiltersBar
         filters={filters}
-        accounts={accounts}
+        accounts={activeAccounts}
         categories={categories}
         onChange={setFilters}
         onReset={() => setFilters(defaultFilters)}
@@ -152,7 +152,7 @@ function TransactionsPage() {
 
       {editingTransaction ? (
         <TransactionFormPanel
-          accounts={accounts}
+          accounts={activeAccounts}
           categories={categories}
           editingTransaction={editingTransaction}
           onCreateCategory={createCategory}

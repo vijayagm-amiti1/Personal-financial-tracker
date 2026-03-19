@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import BudgetFormPanel from '../components/budgets/BudgetFormPanel'
 import BudgetPlansList from '../components/budgets/BudgetPlansList'
 import ReportPanel from '../components/reports/ReportPanel'
 import useBudgetsData from '../hooks/useBudgetsData'
 import useDevelopmentBootstrap from '../hooks/useDevelopmentBootstrap'
 import type { BudgetFormValues, BudgetRecord } from '../types/budget'
-import type { EndpointConfig } from '../types/report'
-import type { TransactionRecord } from '../types/transaction'
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-IN', {
@@ -16,67 +14,13 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
-async function loadEndpointConfig(): Promise<EndpointConfig> {
-  const response = await fetch('/endpoints.json')
-
-  if (!response.ok) {
-    throw new Error('Failed to load endpoint configuration.')
-  }
-
-  return response.json()
-}
-
 function BudgetsPage() {
   const { user, categories } = useDevelopmentBootstrap()
-  const { budgets, isLoading, error, saveBudget, deleteBudget, copyPreviousMonthBudgets } = useBudgetsData({ userId: user.id })
+  const { budgets, isLoading, error, saveBudget, deleteBudget } = useBudgetsData({ userId: user.id })
   const [editingBudget, setEditingBudget] = useState<BudgetRecord | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [transactions, setTransactions] = useState<TransactionRecord[]>([])
-
-  useEffect(() => {
-    let isActive = true
-
-    const loadTransactions = async () => {
-      try {
-        const config = await loadEndpointConfig()
-        const path = config.transactions.getByUser.path.replace('{userId}', user.id)
-        const response = await fetch(new URL(path, config.baseUrl).toString(), { cache: 'no-store' })
-
-        if (!response.ok) {
-          return
-        }
-
-        const payload = (await response.json()) as TransactionRecord[]
-        if (isActive) {
-          setTransactions(Array.isArray(payload) ? payload : [])
-        }
-      } catch {
-        if (isActive) {
-          setTransactions([])
-        }
-      }
-    }
-
-    const refreshOnFocus = () => {
-      void loadTransactions()
-    }
-
-    void loadTransactions()
-    const intervalId = window.setInterval(() => {
-      void loadTransactions()
-    }, 5000)
-    window.addEventListener('focus', refreshOnFocus)
-    document.addEventListener('visibilitychange', refreshOnFocus)
-
-    return () => {
-      isActive = false
-      window.clearInterval(intervalId)
-      window.removeEventListener('focus', refreshOnFocus)
-      document.removeEventListener('visibilitychange', refreshOnFocus)
-    }
-  }, [user.id])
 
   const visibleBudgets = useMemo(
     () =>
@@ -84,39 +28,15 @@ function BudgetsPage() {
         .filter((budget) => budget.month === selectedMonth && budget.year === selectedYear)
         .map((budget) => {
           const matchedCategory = categories.find((category) => category.id === budget.categoryId)
-          const transactionSpent = transactions.reduce((total, transaction) => {
-            if (transaction.type !== 'expense' || transaction.categoryId !== budget.categoryId) {
-              return total
-            }
-
-            const transactionDate = new Date(transaction.date)
-            const transactionMonth = transactionDate.getMonth() + 1
-            const transactionYear = transactionDate.getFullYear()
-
-            if (transactionMonth !== budget.month || transactionYear !== budget.year) {
-              return total
-            }
-
-            return total + transaction.amount
-          }, 0)
-          const effectiveSpent = Math.max(budget.currentSpent, budget.spentAmount, transactionSpent)
-          const remainingAmount = Number((budget.amount - effectiveSpent).toFixed(2))
-          const spentPercent = budget.amount > 0
-            ? Number(((effectiveSpent * 100) / budget.amount).toFixed(2))
-            : 0
 
           return {
             ...budget,
             categoryName: budget.categoryName ?? matchedCategory?.name ?? 'Budget category',
             categoryColor: budget.categoryColor ?? matchedCategory?.color ?? '#183050',
             categoryIcon: budget.categoryIcon ?? matchedCategory?.icon ?? 'wallet',
-            currentSpent: effectiveSpent,
-            spentAmount: effectiveSpent,
-            remainingAmount,
-            spentPercent,
           }
         }),
-    [budgets, categories, transactions, selectedMonth, selectedYear],
+    [budgets, categories, selectedMonth, selectedYear],
   )
 
   const summary = useMemo(() => {
@@ -165,15 +85,6 @@ function BudgetsPage() {
     }
   }
 
-  const handleCopyPrevious = async () => {
-    try {
-      setActionError(null)
-      await copyPreviousMonthBudgets(selectedMonth, selectedYear)
-    } catch (caughtError) {
-      setActionError(caughtError instanceof Error ? caughtError.message : 'Budget copy failed.')
-    }
-  }
-
   return (
     <section className="page">
       <header className="page-header">
@@ -187,10 +98,10 @@ function BudgetsPage() {
       </header>
 
       <div className="budget-info-banner">
-        <strong>How achieved money is calculated</strong>
+        <strong>Money spent is maintained directly on the budget</strong>
         <span>
-          Budget progress is derived from expense transactions in the selected month and year. If
-          every card still shows zero, rerun the latest budget seed data and restart the backend.
+          Only the selected month and year belong to this plan. It does not continue automatically
+          into the next month.
         </span>
       </div>
 
@@ -216,9 +127,6 @@ function BudgetsPage() {
           />
         </label>
 
-        <button type="button" className="secondary-button" onClick={() => void handleCopyPrevious()}>
-          Copy previous month budgets
-        </button>
       </section>
 
       <div className="summary-grid">

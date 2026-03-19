@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react'
-import type { DevAccount, DevCategory, DevGoal, DevUser, EndpointConfig } from '../types/report'
+import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../auth/AuthProvider'
+import type { DevAccount, DevCategory, DevGoal, EndpointConfig } from '../types/report'
 import {
   getStoredAccounts,
   getStoredCategories,
   getStoredGoals,
-  getStoredUser,
   initializeDevelopmentStorage,
   setStoredAccounts,
   setStoredCategories,
   setStoredGoals,
 } from '../utils/devStorage'
+import { authFetch } from '../utils/authFetch'
 
 type BootstrapState = {
-  user: DevUser
   accounts: DevAccount[]
   categories: DevCategory[]
   goals: DevGoal[]
@@ -41,17 +41,37 @@ async function loadEndpointConfig(): Promise<EndpointConfig> {
   return response.json()
 }
 
+function mapAccount(item: unknown): DevAccount {
+  const record = item as Record<string, unknown>
+
+  return {
+    id: String(record.id),
+    userId: String(record.userId),
+    name: String(record.name ?? ''),
+    type: String(record.type ?? ''),
+    institutionName: String(record.institutionName ?? ''),
+    openingBalance: Number(record.openingBalance ?? 0),
+    currentBalance: Number(record.currentBalance ?? 0),
+    isActive: record.isActive !== false,
+    createdAt: record.createdAt ? String(record.createdAt) : undefined,
+  }
+}
+
 function useDevelopmentBootstrap() {
+  const { user } = useAuth()
   const [state, setState] = useState<BootstrapState>(() => {
     initializeDevelopmentStorage()
 
     return {
-      user: getStoredUser(),
       accounts: getStoredAccounts(),
       categories: getStoredCategories(),
       goals: getStoredGoals(),
     }
   })
+
+  if (!user) {
+    throw new Error('Authenticated user is required')
+  }
 
   const refreshCategories = async () => {
     const config = await loadEndpointConfig()
@@ -61,11 +81,7 @@ function useDevelopmentBootstrap() {
       return []
     }
 
-    const user = getStoredUser()
-    const url = new URL(categoryPath, config.baseUrl)
-    url.searchParams.set('userId', user.id)
-
-    const response = await fetch(url.toString())
+    const response = await authFetch(new URL(categoryPath, config.baseUrl).toString())
 
     if (!response.ok) {
       throw new Error((await extractErrorMessage(response)) ?? 'Failed to load categories.')
@@ -81,6 +97,28 @@ function useDevelopmentBootstrap() {
     return categories
   }
 
+  const refreshAccounts = async () => {
+    const config = await loadEndpointConfig()
+    const accountPath = config.accounts?.getAll?.path
+
+    if (!accountPath) {
+      return []
+    }
+
+    const response = await authFetch(new URL(accountPath, config.baseUrl).toString())
+    if (!response.ok) {
+      throw new Error((await extractErrorMessage(response)) ?? 'Failed to load accounts.')
+    }
+
+    const accounts = ((await response.json()) as unknown[]).map(mapAccount)
+    setStoredAccounts(accounts)
+    setState((currentState) => ({
+      ...currentState,
+      accounts,
+    }))
+    return accounts
+  }
+
   const createCategory = async (payload: {
     name: string
     type: 'income' | 'expense'
@@ -94,11 +132,9 @@ function useDevelopmentBootstrap() {
       throw new Error('Category create endpoint is not configured.')
     }
 
-    const user = getStoredUser()
     const url = new URL(categoryPath, config.baseUrl)
-    url.searchParams.set('userId', user.id)
 
-    const response = await fetch(url.toString(), {
+    const response = await authFetch(url.toString(), {
       method: config.categories?.create?.method ?? 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -138,11 +174,9 @@ function useDevelopmentBootstrap() {
       throw new Error('Goal create endpoint is not configured.')
     }
 
-    const user = getStoredUser()
     const url = new URL(goalPath, config.baseUrl)
-    url.searchParams.set('userId', user.id)
 
-    const response = await fetch(url.toString(), {
+    const response = await authFetch(url.toString(), {
       method: config.goals?.create?.method ?? 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -180,11 +214,9 @@ function useDevelopmentBootstrap() {
       throw new Error('Goal contribution endpoint is not configured.')
     }
 
-    const user = getStoredUser()
     const url = new URL(goalPath, config.baseUrl)
-    url.searchParams.set('userId', user.id)
 
-    const response = await fetch(url.toString(), {
+    const response = await authFetch(url.toString(), {
       method: config.goals?.contribute?.method ?? 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -234,9 +266,8 @@ function useDevelopmentBootstrap() {
       throw new Error('Goal delete endpoint is not configured.')
     }
 
-    const user = getStoredUser()
-    const transactionPath = config.transactions.getByUser.path.replace('{userId}', user.id)
-    const transactionsResponse = await fetch(new URL(transactionPath, config.baseUrl).toString())
+    const transactionPath = config.transactions.getByUser.path
+    const transactionsResponse = await authFetch(new URL(transactionPath, config.baseUrl).toString())
 
     if (!transactionsResponse.ok) {
       throw new Error((await extractErrorMessage(transactionsResponse)) ?? 'Failed to load transactions before deleting goal.')
@@ -251,10 +282,9 @@ function useDevelopmentBootstrap() {
     }>
 
     const url = new URL(goalPath, config.baseUrl)
-    url.searchParams.set('userId', user.id)
     url.searchParams.set('goalId', goalId)
 
-    const response = await fetch(url.toString(), {
+    const response = await authFetch(url.toString(), {
       method: config.goals?.delete?.method ?? 'DELETE',
     })
 
@@ -296,13 +326,116 @@ function useDevelopmentBootstrap() {
     }))
   }
 
+  const createAccount = async (payload: {
+    name: string
+    type: string
+    institutionName: string
+    openingBalance: number
+  }) => {
+    const config = await loadEndpointConfig()
+    const accountPath = config.accounts?.create?.path
+
+    if (!accountPath) {
+      throw new Error('Account create endpoint is not configured.')
+    }
+
+    const url = new URL(accountPath, config.baseUrl)
+
+    const response = await authFetch(url.toString(), {
+      method: config.accounts?.create?.method ?? 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      throw new Error((await extractErrorMessage(response)) ?? 'Failed to create account.')
+    }
+
+    const createdAccount = mapAccount(await response.json())
+    await refreshAccounts()
+    return createdAccount
+  }
+
+  const updateAccount = async (accountId: string, payload: {
+    name: string
+    type: string
+    institutionName: string
+    openingBalance: number
+  }) => {
+    const config = await loadEndpointConfig()
+    const accountPath = config.accounts?.update?.path
+
+    if (!accountPath) {
+      throw new Error('Account update endpoint is not configured.')
+    }
+
+    const url = new URL(accountPath.replace('{accountId}', accountId), config.baseUrl)
+
+    const response = await authFetch(url.toString(), {
+      method: config.accounts?.update?.method ?? 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      throw new Error((await extractErrorMessage(response)) ?? 'Failed to update account.')
+    }
+
+    const updatedAccount = mapAccount(await response.json())
+    await refreshAccounts()
+    return updatedAccount
+  }
+
+  const deactivateAccount = async (accountId: string) => {
+    const config = await loadEndpointConfig()
+    const accountPath = config.accounts?.delete?.path
+
+    if (!accountPath) {
+      throw new Error('Account delete endpoint is not configured.')
+    }
+
+    const url = new URL(accountPath.replace('{accountId}', accountId), config.baseUrl)
+
+    const response = await authFetch(url.toString(), {
+      method: config.accounts?.delete?.method ?? 'DELETE',
+    })
+
+    if (!response.ok) {
+      throw new Error((await extractErrorMessage(response)) ?? 'Failed to deactivate account.')
+    }
+
+    await refreshAccounts()
+    const nextGoals = state.goals.filter((goal) => goal.linkedAccountId !== accountId)
+    setStoredGoals(nextGoals)
+    setState((currentState) => ({
+      ...currentState,
+      goals: nextGoals,
+    }))
+  }
+
   useEffect(() => {
+    void refreshAccounts().catch(() => undefined)
     void refreshCategories().catch(() => undefined)
   }, [])
 
+  const activeAccounts = useMemo(
+    () => state.accounts.filter((account) => account.isActive !== false),
+    [state.accounts],
+  )
+
   return {
+    user,
     ...state,
+    activeAccounts,
+    refreshAccounts,
     refreshCategories,
+    createAccount,
+    updateAccount,
+    deactivateAccount,
     createCategory,
     createGoal,
     contributeToGoal,

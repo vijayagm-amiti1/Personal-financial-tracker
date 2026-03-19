@@ -1,5 +1,4 @@
 export type ReportFilters = {
-  userId: string
   accountId: string
   month: number
   year: number
@@ -18,7 +17,10 @@ export type DevAccount = {
   name: string
   type: string
   institutionName: string
+  openingBalance?: number
   currentBalance?: number
+  isActive?: boolean
+  createdAt?: string
 }
 
 export type DevCategory = {
@@ -53,6 +55,16 @@ export type CategorySpendingReport = {
   categoryId: string
   categoryName: string
   expense: number
+}
+
+export type NotificationRecord = {
+  id: string
+  userId: string
+  title: string
+  message: string
+  type: 'BUDGET_WARNING' | 'GOAL_REACHED' | 'SYSTEM_UPDATE' | 'DAILY_REMINDER'
+  isRead: boolean
+  createdAt: string
 }
 
 export type EndpointConfig = {
@@ -93,6 +105,24 @@ export type EndpointConfig = {
       path: string
     }
   }
+  accounts?: {
+    getAll?: {
+      method: string
+      path: string
+    }
+    create?: {
+      method: string
+      path: string
+    }
+    update?: {
+      method: string
+      path: string
+    }
+    delete?: {
+      method: string
+      path: string
+    }
+  }
   budgets?: {
     create?: {
       method: string
@@ -125,6 +155,50 @@ export type EndpointConfig = {
       path: string
     }
     contribute?: {
+      method: string
+      path: string
+    }
+    delete?: {
+      method: string
+      path: string
+    }
+  }
+  notifications?: {
+    getAll?: {
+      method: string
+      path: string
+    }
+    getById?: {
+      method: string
+      path: string
+    }
+    markAsRead?: {
+      method: string
+      path: string
+    }
+    markAllAsRead?: {
+      method: string
+      path: string
+    }
+    deleteById?: {
+      method: string
+      path: string
+    }
+    deleteAll?: {
+      method: string
+      path: string
+    }
+  }
+  recurring?: {
+    getAll?: {
+      method: string
+      path: string
+    }
+    create?: {
+      method: string
+      path: string
+    }
+    update?: {
       method: string
       path: string
     }

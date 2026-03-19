@@ -5,6 +5,8 @@ import type {
   TransactionFormValues,
   TransactionRecord,
 } from '../types/transaction'
+import { dispatchNotificationsRefresh } from '../utils/appEvents'
+import { authFetch } from '../utils/authFetch'
 
 type UseTransactionsDataArgs = {
   userId: string
@@ -146,8 +148,8 @@ function useTransactionsData({
       }
 
       const config = configRef.current
-      const path = config.transactions.getByUser.path.replace('{userId}', userId)
-      const response = await fetch(new URL(path, config.baseUrl).toString())
+      const path = config.transactions.getByUser.path
+      const response = await authFetch(new URL(path, config.baseUrl).toString())
 
       if (!response.ok) {
         throw new Error((await extractErrorMessage(response)) ?? 'Failed to load transactions.')
@@ -200,7 +202,6 @@ function useTransactionsData({
       ? endpoint.path.replace('{transactionId}', transactionId)
       : endpoint.path
     const url = new URL(path, config.baseUrl)
-    url.searchParams.set('userId', userId)
 
     const payload = {
       type: values.type,
@@ -222,7 +223,7 @@ function useTransactionsData({
               .filter(Boolean),
     }
 
-    const response = await fetch(url.toString(), {
+    const response = await authFetch(url.toString(), {
       method: endpoint.method,
       headers: {
         'Content-Type': 'application/json',
@@ -235,6 +236,7 @@ function useTransactionsData({
     }
 
     await reload()
+    dispatchNotificationsRefresh()
   }
 
   const deleteTransaction = async (transactionId: string) => {
@@ -245,9 +247,8 @@ function useTransactionsData({
     const config = configRef.current
     const path = config.transactions.delete.path.replace('{transactionId}', transactionId)
     const url = new URL(path, config.baseUrl)
-    url.searchParams.set('userId', userId)
 
-    const response = await fetch(url.toString(), {
+    const response = await authFetch(url.toString(), {
       method: config.transactions.delete.method,
     })
 
@@ -256,6 +257,7 @@ function useTransactionsData({
     }
 
     await reload()
+    dispatchNotificationsRefresh()
   }
 
   return {

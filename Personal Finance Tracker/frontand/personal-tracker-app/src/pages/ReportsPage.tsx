@@ -36,16 +36,15 @@ function getTopCategory(
 }
 
 function ReportsPage() {
-  const { user, accounts } = useDevelopmentBootstrap()
+  const { activeAccounts } = useDevelopmentBootstrap()
   const [filters, setFilters] = useState<ReportFilters>({
-    userId: user.id,
     accountId: ALL_ACCOUNTS_VALUE,
     month: 3,
     year: 2026,
     type: 'all',
   })
   const { dailyReport, categorySpendingReport, isLoading, error, reload } =
-    useReportsData(filters, accounts)
+    useReportsData(filters, activeAccounts)
 
   const totals = useMemo(() => getTotals(dailyReport), [dailyReport])
   const topCategory = useMemo(
@@ -68,7 +67,7 @@ function ReportsPage() {
 
       <FilterBar
         filters={filters}
-        accounts={accounts}
+        accounts={activeAccounts}
         onChange={setFilters}
         onReload={reload}
       />

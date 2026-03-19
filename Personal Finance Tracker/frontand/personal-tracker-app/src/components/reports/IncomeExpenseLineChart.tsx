@@ -17,30 +17,41 @@ const PADDING = { top: 20, right: 18, bottom: 34, left: 44 }
 function buildLinePath<T extends DailyReport | BalancePoint>(
   items: T[],
   valueSelector: (item: T) => number,
+  minValue: number,
   maxValue: number,
 ) {
   const innerWidth = CHART_WIDTH - PADDING.left - PADDING.right
-  const innerHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom
+  const valueRange = Math.max(maxValue - minValue, 1)
 
   return items
     .map((item, index) => {
       const x =
         PADDING.left +
         (items.length === 1 ? innerWidth / 2 : (index / (items.length - 1)) * innerWidth)
-      const y =
-        PADDING.top +
-        innerHeight -
-        (valueSelector(item) / Math.max(maxValue, 1)) * innerHeight
+      const y = getYCoordinate(valueSelector(item), minValue, valueRange)
 
       return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
     })
     .join(' ')
 }
 
+function getYCoordinate(value: number, minValue: number, valueRange: number) {
+  const innerHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom
+  return PADDING.top + innerHeight - ((value - minValue) / valueRange) * innerHeight
+}
+
 function formatCurrencyTick(value: number) {
   return new Intl.NumberFormat('en-IN', {
     maximumFractionDigits: 0,
   }).format(value)
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2,
+  }).format(Math.abs(value))
 }
 
 function buildBalanceSeries(items: DailyReport[]): BalancePoint[] {
@@ -70,21 +81,29 @@ function IncomeExpenseLineChart({
   }
 
   const balanceSeries = buildBalanceSeries(items)
+  const hasNegativeBalance = balanceSeries.some((item) => item.balance < 0)
+  const minValue = hasNegativeBalance
+    ? Math.min(0, ...balanceSeries.map((item) => item.balance))
+    : 0
   const maxValue = Math.max(
     ...balanceSeries.flatMap((item) => [item.income, item.expense, item.balance]),
     1,
   )
   const innerWidth = CHART_WIDTH - PADDING.left - PADDING.right
   const innerHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom
-  const yAxisTicks = Array.from({ length: 5 }, (_, index) =>
-    Math.round((maxValue / 4) * (4 - index)),
-  )
+  const valueRange = Math.max(maxValue - minValue, 1)
+  const zeroY = getYCoordinate(0, minValue, valueRange)
+  const yAxisTicks = Array.from({ length: 6 }, (_, index) => {
+    const ratio = 1 - index / 5
+    return minValue + valueRange * ratio
+  })
 
-  const incomePath = buildLinePath(items, (item) => item.income, maxValue)
-  const expensePath = buildLinePath(items, (item) => item.expense, maxValue)
+  const incomePath = buildLinePath(items, (item) => item.income, minValue, maxValue)
+  const expensePath = buildLinePath(items, (item) => item.expense, minValue, maxValue)
   const balancePath = buildLinePath(
     balanceSeries,
     (item) => item.balance,
+    minValue,
     maxValue,
   )
 
@@ -127,10 +146,10 @@ function IncomeExpenseLineChart({
                 y1={y}
                 x2={CHART_WIDTH - PADDING.right}
                 y2={y}
-                className="chart-grid-line"
+                className={Math.abs(tick) < valueRange / 100 ? 'chart-grid-line chart-zero-line' : 'chart-grid-line'}
               />
               <text x={10} y={y + 4} className="chart-axis-text">
-                {formatCurrencyTick(tick)}
+                {tick < 0 ? `-${formatCurrencyTick(Math.abs(tick))}` : formatCurrencyTick(tick)}
               </text>
             </g>
           )
@@ -162,6 +181,16 @@ function IncomeExpenseLineChart({
           )
         })}
 
+        {hasNegativeBalance ? (
+          <line
+            x1={PADDING.left}
+            y1={zeroY}
+            x2={CHART_WIDTH - PADDING.right}
+            y2={zeroY}
+            className="chart-zero-axis"
+          />
+        ) : null}
+
         {(type === 'all' || type === 'income') ? (
           <path d={incomePath} className="chart-line chart-line-income" />
         ) : null}
@@ -176,25 +205,26 @@ function IncomeExpenseLineChart({
           const x =
             PADDING.left +
             (items.length === 1 ? innerWidth / 2 : (index / (items.length - 1)) * innerWidth)
-          const incomeY =
-            PADDING.top + innerHeight - (item.income / Math.max(maxValue, 1)) * innerHeight
-          const expenseY =
-            PADDING.top + innerHeight - (item.expense / Math.max(maxValue, 1)) * innerHeight
-          const balanceY =
-            PADDING.top +
-            innerHeight -
-            (balanceSeries[index].balance / Math.max(maxValue, 1)) * innerHeight
+          const incomeY = getYCoordinate(item.income, minValue, valueRange)
+          const expenseY = getYCoordinate(item.expense, minValue, valueRange)
+          const balanceY = getYCoordinate(balanceSeries[index].balance, minValue, valueRange)
 
           return (
             <g key={`point-${item.accountId}-${item.day}`}>
               {(type === 'all' || type === 'income') ? (
-                <circle cx={x} cy={incomeY} r={4} className="chart-point chart-point-income" />
+                <circle cx={x} cy={incomeY} r={4} className="chart-point chart-point-income">
+                  <title>{`Day ${item.day}: Income ${formatCurrency(item.income)}`}</title>
+                </circle>
               ) : null}
               {(type === 'all' || type === 'expense') ? (
-                <circle cx={x} cy={expenseY} r={4} className="chart-point chart-point-expense" />
+                <circle cx={x} cy={expenseY} r={4} className="chart-point chart-point-expense">
+                  <title>{`Day ${item.day}: Outgoing ${formatCurrency(item.expense)}`}</title>
+                </circle>
               ) : null}
               {type === 'all' ? (
-                <circle cx={x} cy={balanceY} r={4} className="chart-point chart-point-balance" />
+                <circle cx={x} cy={balanceY} r={4} className="chart-point chart-point-balance">
+                  <title>{`Day ${item.day}: Current balance ${formatCurrency(balanceSeries[index].balance)}`}</title>
+                </circle>
               ) : null}
             </g>
           )

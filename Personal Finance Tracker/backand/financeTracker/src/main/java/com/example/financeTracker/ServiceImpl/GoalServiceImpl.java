@@ -6,6 +6,7 @@ import com.example.financeTracker.DTO.ResponseDTO.GoalResponse;
 import com.example.financeTracker.Entity.Account;
 import com.example.financeTracker.Entity.Category;
 import com.example.financeTracker.Entity.Goal;
+import com.example.financeTracker.Entity.NotificationType;
 import com.example.financeTracker.Entity.Transaction;
 import com.example.financeTracker.Entity.User;
 import com.example.financeTracker.Exception.BadRequestException;
@@ -16,6 +17,7 @@ import com.example.financeTracker.Repository.GoalRepository;
 import com.example.financeTracker.Repository.TransactionRepository;
 import com.example.financeTracker.Repository.UserRepository;
 import com.example.financeTracker.Service.GoalService;
+import com.example.financeTracker.Service.NotificationService;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -39,13 +41,14 @@ public class GoalServiceImpl implements GoalService {
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final CategoryRepository categoryRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
     public GoalResponse createGoal(GoalRequest request, UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        Account linkedAccount = accountRepository.findByIdAndUserId(request.getLinkedAccountId(), userId)
+        Account linkedAccount = accountRepository.findByIdAndUserIdAndIsActiveTrue(request.getLinkedAccountId(), userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Linked account not found for this user"));
         goalRepository.findByUserIdAndNameIgnoreCase(userId, request.getName().trim())
                 .ifPresent(existingGoal -> {
@@ -72,7 +75,7 @@ public class GoalServiceImpl implements GoalService {
     public GoalResponse contributeToGoal(GoalContributionRequest request, UUID userId) {
         Goal goal = goalRepository.findByIdAndUserId(request.getGoalId(), userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found for this user"));
-        Account sourceAccount = accountRepository.findByIdAndUserId(request.getAccountId(), userId)
+        Account sourceAccount = accountRepository.findByIdAndUserIdAndIsActiveTrue(request.getAccountId(), userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found for this user"));
         Account linkedAccount = goal.getLinkedAccount();
 
@@ -86,6 +89,7 @@ public class GoalServiceImpl implements GoalService {
             linkedAccount.setCurrentBalance(linkedAccount.getCurrentBalance().add(request.getAmount()));
         }
 
+        boolean wasBelowTarget = goal.getCurrentAmount().compareTo(goal.getTargetAmount()) < 0;
         goal.setCurrentAmount(goal.getCurrentAmount().add(request.getAmount()));
         if (goal.getCurrentAmount().compareTo(goal.getTargetAmount()) >= 0) {
             goal.setStatus("completed");
@@ -97,6 +101,13 @@ public class GoalServiceImpl implements GoalService {
         }
         transactionRepository.save(buildGoalContributionTransaction(goal, sourceAccount, request.getAmount()));
         Goal updatedGoal = goalRepository.save(goal);
+        if (wasBelowTarget && updatedGoal.getCurrentAmount().compareTo(updatedGoal.getTargetAmount()) >= 0) {
+            notificationService.createNotificationIfAbsent(
+                    userId,
+                    "Goal reached: " + updatedGoal.getName(),
+                    String.format("%s reached its target amount of %s.", updatedGoal.getName(), updatedGoal.getTargetAmount()),
+                    NotificationType.GOAL_REACHED);
+        }
         log.info("Contributed {} to goal {} for user {}", request.getAmount(), request.getGoalId(), userId);
         return mapToResponse(updatedGoal);
     }

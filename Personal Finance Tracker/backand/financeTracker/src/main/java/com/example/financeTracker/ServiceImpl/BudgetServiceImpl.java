@@ -4,18 +4,14 @@ import com.example.financeTracker.DTO.RequestDTO.BudgetRequest;
 import com.example.financeTracker.DTO.ResponseDTO.BudgetResponse;
 import com.example.financeTracker.Entity.Budget;
 import com.example.financeTracker.Entity.Category;
-import com.example.financeTracker.Entity.Transaction;
 import com.example.financeTracker.Entity.User;
 import com.example.financeTracker.Exception.BadRequestException;
 import com.example.financeTracker.Exception.ResourceNotFoundException;
 import com.example.financeTracker.Repository.BudgetRepository;
 import com.example.financeTracker.Repository.CategoryRepository;
-import com.example.financeTracker.Repository.TransactionRepository;
 import com.example.financeTracker.Repository.UserRepository;
 import com.example.financeTracker.Service.BudgetService;
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -34,7 +30,7 @@ public class BudgetServiceImpl implements BudgetService {
     private final BudgetRepository budgetRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
-    private final TransactionRepository transactionRepository;
+
     @Override
     @Transactional
     public BudgetResponse createBudget(BudgetRequest request, UUID userId) {
@@ -54,7 +50,7 @@ public class BudgetServiceImpl implements BudgetService {
         budget.setMonth(request.getMonth());
         budget.setYear(request.getYear());
         budget.setAmount(request.getAmount());
-        budget.setCurrentSpent(calculateCurrentSpentForBudget(userId, request.getCategoryId(), request.getMonth(), request.getYear()));
+        budget.setMoneySpent(BigDecimal.ZERO);
         budget.setAlertThresholdPercent(request.getAlertThresholdPercent() != null ? request.getAlertThresholdPercent() : 80);
 
         Budget savedBudget = budgetRepository.save(budget);
@@ -74,11 +70,17 @@ public class BudgetServiceImpl implements BudgetService {
                     throw new BadRequestException("This category budget is already set for the selected month");
                 });
 
+        boolean planChanged = !budget.getCategory().getId().equals(request.getCategoryId())
+                || !budget.getMonth().equals(request.getMonth())
+                || !budget.getYear().equals(request.getYear());
+
         budget.setCategory(category);
         budget.setMonth(request.getMonth());
         budget.setYear(request.getYear());
         budget.setAmount(request.getAmount());
-        budget.setCurrentSpent(calculateCurrentSpentForBudget(userId, request.getCategoryId(), request.getMonth(), request.getYear()));
+        if (planChanged) {
+            budget.setMoneySpent(BigDecimal.ZERO);
+        }
         budget.setAlertThresholdPercent(request.getAlertThresholdPercent() != null ? request.getAlertThresholdPercent() : 80);
 
         Budget updatedBudget = budgetRepository.save(budget);
@@ -126,42 +128,6 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     @Transactional
-    public List<BudgetResponse> copyPreviousMonthBudgets(UUID userId, Integer month, Integer year) {
-        getRequiredUser(userId);
-        YearMonth targetPeriod = YearMonth.of(year, month);
-
-        if (!budgetRepository.findAllByUserIdAndMonthAndYear(userId, month, year).isEmpty()) {
-            throw new BadRequestException("Budgets already exist for the selected month");
-        }
-
-        YearMonth previousPeriod = targetPeriod.minusMonths(1);
-        List<Budget> previousBudgets = budgetRepository.findAllByUserIdAndMonthAndYear(
-                userId, previousPeriod.getMonthValue(), previousPeriod.getYear());
-
-        if (previousBudgets.isEmpty()) {
-            throw new ResourceNotFoundException("No budgets found in the previous month to copy");
-        }
-
-        List<BudgetResponse> copiedResponses = new ArrayList<>();
-        for (Budget previousBudget : previousBudgets) {
-            Budget copiedBudget = Budget.builder()
-                    .user(previousBudget.getUser())
-                    .category(previousBudget.getCategory())
-                    .month(month)
-                    .year(year)
-                    .amount(previousBudget.getAmount())
-                    .alertThresholdPercent(previousBudget.getAlertThresholdPercent())
-                    .build();
-            copiedResponses.add(mapToResponse(budgetRepository.save(copiedBudget)));
-        }
-
-        log.info("Copied {} budgets for user {} into month {}, year {}",
-                copiedResponses.size(), userId, month, year);
-        return copiedResponses;
-    }
-
-    @Override
-    @Transactional
     public void deleteBudget(UUID budgetId, UUID userId) {
         Budget budget = budgetRepository.findByIdAndUserId(budgetId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Budget not found for this user"));
@@ -180,23 +146,11 @@ public class BudgetServiceImpl implements BudgetService {
     }
 
     private BudgetResponse mapToResponse(Budget budget) {
-        BigDecimal actualCurrentSpent = calculateCurrentSpentForBudget(
-                budget.getUser().getId(),
-                budget.getCategory().getId(),
-                budget.getMonth(),
-                budget.getYear());
-        BigDecimal storedCurrentSpent = budget.getCurrentSpent() != null ? budget.getCurrentSpent() : BigDecimal.ZERO;
-
-        if (storedCurrentSpent.compareTo(actualCurrentSpent) != 0) {
-            budget.setCurrentSpent(actualCurrentSpent);
-            budgetRepository.save(budget);
-        }
-
-        BigDecimal currentSpent = actualCurrentSpent;
-        BigDecimal remainingAmount = budget.getAmount().subtract(currentSpent);
+        BigDecimal moneySpent = budget.getMoneySpent() != null ? budget.getMoneySpent() : BigDecimal.ZERO;
+        BigDecimal remainingAmount = budget.getAmount().subtract(moneySpent);
         double spentPercent = budget.getAmount().signum() == 0
                 ? 0.0
-                : currentSpent.multiply(BigDecimal.valueOf(100))
+                : moneySpent.multiply(BigDecimal.valueOf(100))
                         .divide(budget.getAmount(), 2, java.math.RoundingMode.HALF_UP)
                         .doubleValue();
 
@@ -210,34 +164,11 @@ public class BudgetServiceImpl implements BudgetService {
                 .month(budget.getMonth())
                 .year(budget.getYear())
                 .amount(budget.getAmount())
-                .currentSpent(currentSpent)
-                .spentAmount(currentSpent)
+                .moneySpent(moneySpent)
+                .spentAmount(moneySpent)
                 .remainingAmount(remainingAmount)
                 .spentPercent(spentPercent)
                 .alertThresholdPercent(budget.getAlertThresholdPercent())
                 .build();
-    }
-
-    private BigDecimal calculateCurrentSpentForBudget(UUID userId, UUID categoryId, Integer month, Integer year) {
-        YearMonth period = YearMonth.of(year, month);
-        LocalDate startDate = period.atDay(1);
-        LocalDate endDate = period.atEndOfMonth();
-        List<Transaction> transactions = transactionRepository
-                .findAllByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(userId, startDate, endDate);
-
-        BigDecimal spentAmount = BigDecimal.ZERO;
-        for (Transaction transaction : transactions) {
-            if (!"expense".equalsIgnoreCase(transaction.getType())) {
-                continue;
-            }
-            if (transaction.getCategory() == null || transaction.getCategory().getId() == null) {
-                continue;
-            }
-            if (!categoryId.equals(transaction.getCategory().getId())) {
-                continue;
-            }
-            spentAmount = spentAmount.add(transaction.getAmount());
-        }
-        return spentAmount;
     }
 }

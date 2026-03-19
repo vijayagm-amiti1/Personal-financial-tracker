@@ -49,7 +49,7 @@ SET name = EXCLUDED.name,
     institution_name = EXCLUDED.institution_name;
 
 -- Budgets
-INSERT INTO budgets (id, user_id, category_id, month, year, amount, current_spent, alert_threshold_percent)
+INSERT INTO budgets (id, user_id, category_id, month, year, amount, money_spent, alert_threshold_percent)
 VALUES
     ('00000000-0000-0000-0000-000000002040', '00000000-0000-0000-0000-000000002001', '00000000-0000-0000-0000-000000002012', 3, 2026, 15000.00, 0.00, 80),
     ('00000000-0000-0000-0000-000000002041', '00000000-0000-0000-0000-000000002001', '00000000-0000-0000-0000-000000002013', 3, 2026, 22000.00, 0.00, 90),
@@ -62,7 +62,7 @@ SET category_id = EXCLUDED.category_id,
     month = EXCLUDED.month,
     year = EXCLUDED.year,
     amount = EXCLUDED.amount,
-    current_spent = EXCLUDED.current_spent,
+    money_spent = EXCLUDED.money_spent,
     alert_threshold_percent = EXCLUDED.alert_threshold_percent;
 
 -- Goals
@@ -249,7 +249,7 @@ FROM (
 ON CONFLICT (id) DO NOTHING;
 
 UPDATE budgets b
-SET current_spent = COALESCE((
+SET money_spent = COALESCE((
     SELECT SUM(t.amount)
     FROM transactions t
     WHERE t.user_id = b.user_id

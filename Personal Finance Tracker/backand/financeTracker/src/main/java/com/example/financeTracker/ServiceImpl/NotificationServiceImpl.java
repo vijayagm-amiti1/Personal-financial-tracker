@@ -2,8 +2,11 @@ package com.example.financeTracker.ServiceImpl;
 
 import com.example.financeTracker.DTO.ResponseDTO.NotificationResponse;
 import com.example.financeTracker.Entity.Notification;
+import com.example.financeTracker.Entity.NotificationType;
+import com.example.financeTracker.Entity.User;
 import com.example.financeTracker.Exception.ResourceNotFoundException;
 import com.example.financeTracker.Repository.NotificationRepository;
+import com.example.financeTracker.Repository.UserRepository;
 import java.util.ArrayList;
 import java.util.List;
 import com.example.financeTracker.Service.NotificationService;
@@ -20,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
 
     @Override
     public List<NotificationResponse> getNotificationsByUserId(UUID userId) {
@@ -74,6 +78,33 @@ public class NotificationServiceImpl implements NotificationService {
     public void deleteAllNotificationsByUserId(UUID userId) {
         notificationRepository.deleteAllByUserId(userId);
         log.info("Deleted all notifications for user {}", userId);
+    }
+
+    @Override
+    @Transactional
+    public NotificationResponse createNotification(UUID userId, String title, String message, NotificationType type) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Notification savedNotification = notificationRepository.save(Notification.builder()
+                .user(user)
+                .title(title)
+                .message(message)
+                .type(type)
+                .isRead(false)
+                .build());
+        log.info("Created {} notification {} for user {}", type, savedNotification.getId(), userId);
+        return mapToResponse(savedNotification);
+    }
+
+    @Override
+    @Transactional
+    public void createNotificationIfAbsent(UUID userId, String title, String message, NotificationType type) {
+        if (notificationRepository.existsByUserIdAndTitle(userId, title)) {
+            log.info("Skipping notification for user {} because title already exists: {}", userId, title);
+            return;
+        }
+        createNotification(userId, title, message, type);
     }
 
     private NotificationResponse mapToResponse(Notification notification) {

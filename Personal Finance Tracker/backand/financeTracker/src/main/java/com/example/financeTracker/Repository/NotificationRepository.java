@@ -12,5 +12,9 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
 
     Optional<Notification> findByIdAndUserId(UUID notificationId, UUID userId);
 
+    boolean existsByUserIdAndTypeAndTitle(UUID userId, com.example.financeTracker.Entity.NotificationType type, String title);
+
+    boolean existsByUserIdAndTitle(UUID userId, String title);
+
     void deleteAllByUserId(UUID userId);
 }

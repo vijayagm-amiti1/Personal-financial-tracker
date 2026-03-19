@@ -14,4 +14,6 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
     List<RecurringTransaction> findAllByNextRunDateLessThanEqual(LocalDate nextRunDate);
 
     Optional<RecurringTransaction> findByIdAndUserId(UUID id, UUID userId);
+
+    List<RecurringTransaction> findAllByUserIdAndAccountId(UUID userId, UUID accountId);
 }

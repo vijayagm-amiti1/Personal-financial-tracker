@@ -64,7 +64,7 @@ function BudgetPlansList({ budgets, onEdit, onDelete }: BudgetPlansListProps) {
               <div className="budget-amount-row">
                 <div className="budget-amount-chip">
                   <span>Spent now</span>
-                  <strong>{formatCurrency(budget.currentSpent)}</strong>
+                  <strong>{formatCurrency(budget.moneySpent)}</strong>
                 </div>
                 <div className="budget-amount-chip">
                   <span>Estimated budget</span>
@@ -76,8 +76,7 @@ function BudgetPlansList({ budgets, onEdit, onDelete }: BudgetPlansListProps) {
                 </div>
               </div>
               <span>
-                Actual spend is calculated from that month&apos;s expense transactions. Alert at{' '}
-                {budget.alertThresholdPercent}%
+                Money spent is tracked on this month&apos;s budget plan. Alert at {budget.alertThresholdPercent}%
               </span>
             </div>
 

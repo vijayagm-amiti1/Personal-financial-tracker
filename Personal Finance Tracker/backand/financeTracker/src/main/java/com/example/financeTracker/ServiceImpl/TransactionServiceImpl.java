@@ -5,6 +5,7 @@ import com.example.financeTracker.DTO.ResponseDTO.TransactionResponse;
 import com.example.financeTracker.Entity.Account;
 import com.example.financeTracker.Entity.Budget;
 import com.example.financeTracker.Entity.Category;
+import com.example.financeTracker.Entity.NotificationType;
 import com.example.financeTracker.Entity.Transaction;
 import com.example.financeTracker.Entity.User;
 import com.example.financeTracker.Repository.AccountRepository;
@@ -12,10 +13,12 @@ import com.example.financeTracker.Repository.BudgetRepository;
 import com.example.financeTracker.Repository.CategoryRepository;
 import com.example.financeTracker.Repository.TransactionRepository;
 import com.example.financeTracker.Repository.UserRepository;
+import com.example.financeTracker.Service.NotificationService;
 import com.example.financeTracker.Service.TransactionService;
 import com.example.financeTracker.Exception.BadRequestException;
 import com.example.financeTracker.Exception.ResourceNotFoundException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Locale;
@@ -38,6 +41,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final BudgetRepository budgetRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -140,7 +144,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public List<TransactionResponse> getTransactionResponsesByUserId(UUID userId) {
         validateUserExists(userId);
-        List<Transaction> transactions = transactionRepository.findAllByUserIdOrderByTransactionDateDesc(userId);
+        List<Transaction> transactions = transactionRepository.findAllByUserIdAndAccountIsActiveTrueOrderByTransactionDateDesc(userId);
         return mapToResponses(transactions);
     }
 
@@ -148,32 +152,33 @@ public class TransactionServiceImpl implements TransactionService {
     public List<TransactionResponse> getTransactionResponsesByAccountId(UUID accountId, UUID userId) {
         validateUserExists(userId);
         getRequiredAccount(accountId, userId, "accountId");
-        List<Transaction> transactions = transactionRepository.findAllByAccountIdAndUserIdOrderByTransactionDateDesc(accountId, userId);
+        List<Transaction> transactions = transactionRepository
+                .findAllByAccountIdAndUserIdAndAccountIsActiveTrueOrderByTransactionDateDesc(accountId, userId);
         return mapToResponses(transactions);
     }
 
     @Override
     public TransactionResponse getTransactionResponseById(UUID transactionId, UUID userId) {
         validateUserExists(userId);
-        Transaction transaction = transactionRepository.findByIdAndUserId(transactionId, userId)
+        Transaction transaction = transactionRepository.findByIdAndUserIdAndAccountIsActiveTrue(transactionId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found for this user"));
         return mapToResponse(transaction);
     }
 
     @Override
     public List<Transaction> getTransactionsByUserId(UUID userId) {
-        return transactionRepository.findAllByUserIdOrderByTransactionDateDesc(userId);
+        return transactionRepository.findAllByUserIdAndAccountIsActiveTrueOrderByTransactionDateDesc(userId);
     }
 
     @Override
     public List<Transaction> getTransactionsByUserIdAndDateRange(UUID userId, LocalDate startDate, LocalDate endDate) {
-        return transactionRepository.findAllByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
+        return transactionRepository.findAllByUserIdAndAccountIsActiveTrueAndTransactionDateBetweenOrderByTransactionDateDesc(
                 userId, startDate, endDate);
     }
 
     @Override
     public Optional<Transaction> getTransactionByIdAndUserId(UUID transactionId, UUID userId) {
-        return transactionRepository.findByIdAndUserId(transactionId, userId);
+        return transactionRepository.findByIdAndUserIdAndAccountIsActiveTrue(transactionId, userId);
     }
 
     @Override
@@ -205,7 +210,7 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private Account getRequiredAccount(UUID accountId, UUID userId, String fieldName) {
-        return accountRepository.findByIdAndUserId(accountId, userId)
+        return accountRepository.findByIdAndUserIdAndIsActiveTrue(accountId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException(fieldName + " does not exist for this user"));
     }
 
@@ -292,7 +297,7 @@ public class TransactionServiceImpl implements TransactionService {
         if (!"expense".equalsIgnoreCase(transaction.getType())) {
             return;
         }
-        adjustBudgetCurrentSpent(
+        adjustBudgetMoneySpent(
                 transaction.getUser().getId(),
                 transaction.getCategory(),
                 transaction.getTransactionDate(),
@@ -307,10 +312,10 @@ public class TransactionServiceImpl implements TransactionService {
         if (!"expense".equalsIgnoreCase(transactionType)) {
             return;
         }
-        adjustBudgetCurrentSpent(userId, category, transactionDate, deltaAmount.negate());
+        adjustBudgetMoneySpent(userId, category, transactionDate, deltaAmount.negate());
     }
 
-    private void adjustBudgetCurrentSpent(UUID userId, Category category, LocalDate transactionDate, BigDecimal deltaAmount) {
+    private void adjustBudgetMoneySpent(UUID userId, Category category, LocalDate transactionDate, BigDecimal deltaAmount) {
         if (category == null || category.getId() == null || transactionDate == null || deltaAmount == null) {
             return;
         }
@@ -321,14 +326,100 @@ public class TransactionServiceImpl implements TransactionService {
                         transactionDate.getMonthValue(),
                         transactionDate.getYear())
                 .ifPresent(budget -> {
-                    BigDecimal currentSpent = budget.getCurrentSpent() != null ? budget.getCurrentSpent() : BigDecimal.ZERO;
-                    BigDecimal nextSpent = currentSpent.add(deltaAmount);
-                    if (nextSpent.signum() < 0) {
-                        nextSpent = BigDecimal.ZERO;
+                    BigDecimal previousMoneySpent = budget.getMoneySpent() != null ? budget.getMoneySpent() : BigDecimal.ZERO;
+                    BigDecimal nextMoneySpent = previousMoneySpent.add(deltaAmount);
+                    if (nextMoneySpent.signum() < 0) {
+                        nextMoneySpent = BigDecimal.ZERO;
                     }
-                    budget.setCurrentSpent(nextSpent);
-                    budgetRepository.save(budget);
+                    budget.setMoneySpent(nextMoneySpent);
+                    Budget savedBudget = budgetRepository.save(budget);
+
+                    log.info(
+                            "Updated budget {} for user {} category {} period {}/{} from {} to {} after transaction delta {}",
+                            savedBudget.getId(),
+                            userId,
+                            savedBudget.getCategory().getName(),
+                            savedBudget.getMonth(),
+                            savedBudget.getYear(),
+                            previousMoneySpent,
+                            nextMoneySpent,
+                            deltaAmount);
+
+                    if (deltaAmount.signum() > 0) {
+                        triggerBudgetNotifications(savedBudget, previousMoneySpent, nextMoneySpent);
+                    }
                 });
+
+        if (budgetRepository.findByUserIdAndCategoryIdAndMonthAndYear(
+                userId,
+                category.getId(),
+                transactionDate.getMonthValue(),
+                transactionDate.getYear()).isEmpty()) {
+            log.info(
+                    "No budget found for user {} category {} period {}/{} while applying transaction delta {}",
+                    userId,
+                    category.getName(),
+                    transactionDate.getMonthValue(),
+                    transactionDate.getYear(),
+                    deltaAmount);
+        }
+    }
+
+    private void triggerBudgetNotifications(Budget budget, BigDecimal previousMoneySpent, BigDecimal currentMoneySpent) {
+        if (budget.getUser() == null || budget.getCategory() == null || budget.getAmount() == null) {
+            return;
+        }
+
+        BigDecimal amount = budget.getAmount();
+        if (amount.signum() <= 0) {
+            return;
+        }
+
+        UUID userId = budget.getUser().getId();
+        String categoryName = budget.getCategory().getName();
+        String periodLabel = String.format("%02d/%d", budget.getMonth(), budget.getYear());
+        int thresholdPercent = budget.getAlertThresholdPercent() != null ? budget.getAlertThresholdPercent() : 80;
+
+        BigDecimal previousPercent = previousMoneySpent.multiply(BigDecimal.valueOf(100))
+                .divide(amount, 2, RoundingMode.HALF_UP);
+        BigDecimal currentPercent = currentMoneySpent.multiply(BigDecimal.valueOf(100))
+                .divide(amount, 2, RoundingMode.HALF_UP);
+
+        log.info(
+                "Budget notification check for user {} category {} period {} previous={} current={} previousPercent={} currentPercent={} threshold={}",
+                userId,
+                categoryName,
+                periodLabel,
+                previousMoneySpent,
+                currentMoneySpent,
+                previousPercent,
+                currentPercent,
+                thresholdPercent);
+
+        if (currentPercent.compareTo(BigDecimal.valueOf(thresholdPercent)) >= 0) {
+            String title = String.format("Budget threshold reached: %s %s", categoryName, periodLabel);
+            String message = String.format(
+                    "%s budget crossed the %d%% alert for %s. Spent %s out of %s (%s%%).",
+                    categoryName,
+                    thresholdPercent,
+                    periodLabel,
+                    currentMoneySpent,
+                    amount,
+                    currentPercent.stripTrailingZeros().toPlainString());
+            notificationService.createNotificationIfAbsent(userId, title, message, NotificationType.BUDGET_WARNING);
+        }
+
+        if (currentPercent.compareTo(BigDecimal.valueOf(100)) >= 0) {
+            String title = String.format("Budget exceeded: %s %s", categoryName, periodLabel);
+            String message = String.format(
+                    "%s budget has reached %s%% for %s. Spent %s out of %s.",
+                    categoryName,
+                    currentPercent.stripTrailingZeros().toPlainString(),
+                    periodLabel,
+                    currentMoneySpent,
+                    amount);
+            notificationService.createNotificationIfAbsent(userId, title, message, NotificationType.BUDGET_WARNING);
+        }
     }
 
     private void persistTouchedAccounts(Account... accounts) {

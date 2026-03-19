@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
   DevAccount,
   CategorySpendingReport,
@@ -7,6 +7,7 @@ import type {
   ReportFilters,
 } from '../types/report'
 import { ALL_ACCOUNTS_VALUE } from '../utils/devStorage'
+import { authFetch } from '../utils/authFetch'
 
 type ReportState = {
   dailyReport: DailyReport[]
@@ -23,7 +24,6 @@ function buildUrl(
   accountId: string,
 ) {
   const url = new URL(path, baseUrl)
-  url.searchParams.set('userId', filters.userId)
   url.searchParams.set('accountId', accountId)
   url.searchParams.set('month', String(filters.month))
   url.searchParams.set('year', String(filters.year))
@@ -116,6 +116,10 @@ function useReportsData(
   const [error, setError] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
   const configRef = useRef<EndpointConfig | null>(null)
+  const availableAccountIdsKey = useMemo(
+    () => availableAccounts.map((account) => account.id).sort().join('|'),
+    [availableAccounts],
+  )
 
   useEffect(() => {
     let active = true
@@ -151,8 +155,8 @@ function useReportsData(
             )
 
             const [dailyResponse, categoryResponse] = await Promise.all([
-              fetch(dailyUrl),
-              fetch(categoryUrl),
+              authFetch(dailyUrl),
+              authFetch(categoryUrl),
             ])
 
             if (!dailyResponse.ok || !categoryResponse.ok) {
@@ -209,7 +213,14 @@ function useReportsData(
     return () => {
       active = false
     }
-  }, [filters, availableAccounts, reloadToken])
+  }, [
+    filters.accountId,
+    filters.month,
+    filters.year,
+    filters.type,
+    availableAccountIdsKey,
+    reloadToken,
+  ])
 
   return {
     dailyReport,

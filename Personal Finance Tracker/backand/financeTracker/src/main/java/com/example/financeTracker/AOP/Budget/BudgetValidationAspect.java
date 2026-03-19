@@ -75,23 +75,6 @@ public class BudgetValidationAspect {
         log.debug("Validated get budgets request for user {} in {}", userId, joinPoint.getSignature().toShortString());
     }
 
-    @Before("execution(* com.example.financeTracker.Service.BudgetService.copyPreviousMonthBudgets(..)) && args(userId, month, year)")
-    public void validateCopyPreviousMonthBudgets(JoinPoint joinPoint, UUID userId, Integer month, Integer year) {
-        if (userId == null) {
-          throw new BadRequestException("userId is required");
-        }
-        if (!userRepository.existsById(userId)) {
-          throw new ResourceNotFoundException("User not found");
-        }
-        if (month == null || month < 1 || month > 12) {
-          throw new BadRequestException("month must be between 1 and 12");
-        }
-        if (year == null) {
-          throw new BadRequestException("year is required");
-        }
-        log.debug("Validated copy previous budgets request for user {} in {}", userId, joinPoint.getSignature().toShortString());
-    }
-
     @Before("(execution(* com.example.financeTracker.Service.BudgetService.getBudgetResponseById(..)) && args(budgetId, userId))"
             + " || (execution(* com.example.financeTracker.Service.BudgetService.deleteBudget(..)) && args(budgetId, userId))")
     public void validateBudgetByIdOperations(JoinPoint joinPoint, UUID budgetId, UUID userId) {

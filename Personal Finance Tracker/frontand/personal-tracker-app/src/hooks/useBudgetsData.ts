@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { EndpointConfig } from '../types/report'
 import type { BudgetFormValues, BudgetRecord } from '../types/budget'
+import { authFetch } from '../utils/authFetch'
 
 type UseBudgetsDataArgs = {
   userId: string
@@ -42,7 +43,7 @@ function mapBudgetRecord(item: unknown): BudgetRecord {
     month: Number(record.month),
     year: Number(record.year),
     amount: Number(record.amount),
-    currentSpent: Number(record.currentSpent ?? record.spentAmount ?? 0),
+    moneySpent: Number(record.moneySpent ?? record.spentAmount ?? 0),
     spentAmount: Number(record.spentAmount ?? 0),
     remainingAmount: Number(record.remainingAmount ?? 0),
     spentPercent: Number(record.spentPercent ?? 0),
@@ -72,9 +73,8 @@ function useBudgetsData({ userId }: UseBudgetsDataArgs) {
       }
 
       const url = new URL(budgetPath, configRef.current.baseUrl)
-      url.searchParams.set('userId', userId)
 
-      const response = await fetch(url.toString())
+      const response = await authFetch(url.toString())
 
       if (!response.ok) {
         throw new Error((await extractErrorMessage(response)) ?? 'Failed to load budgets.')
@@ -108,9 +108,8 @@ function useBudgetsData({ userId }: UseBudgetsDataArgs) {
 
     const path = budgetId ? endpoint.path.replace('{budgetId}', budgetId) : endpoint.path
     const url = new URL(path, configRef.current.baseUrl)
-    url.searchParams.set('userId', userId)
 
-    const response = await fetch(url.toString(), {
+    const response = await authFetch(url.toString(), {
       method: endpoint.method,
       headers: {
         'Content-Type': 'application/json',
@@ -143,41 +142,13 @@ function useBudgetsData({ userId }: UseBudgetsDataArgs) {
     }
 
     const url = new URL(endpoint.path.replace('{budgetId}', budgetId), configRef.current.baseUrl)
-    url.searchParams.set('userId', userId)
 
-    const response = await fetch(url.toString(), {
+    const response = await authFetch(url.toString(), {
       method: endpoint.method,
     })
 
     if (!response.ok) {
       throw new Error((await extractErrorMessage(response)) ?? 'Failed to delete budget.')
-    }
-
-    await reload()
-  }
-
-  const copyPreviousMonthBudgets = async (month: number, year: number) => {
-    if (configRef.current === null) {
-      configRef.current = await loadEndpointConfig()
-    }
-
-    const endpoint = configRef.current.budgets?.copyPrevious
-
-    if (!endpoint?.path) {
-      throw new Error('Budget copy endpoint is not configured.')
-    }
-
-    const url = new URL(endpoint.path, configRef.current.baseUrl)
-    url.searchParams.set('userId', userId)
-    url.searchParams.set('month', String(month))
-    url.searchParams.set('year', String(year))
-
-    const response = await fetch(url.toString(), {
-      method: endpoint.method,
-    })
-
-    if (!response.ok) {
-      throw new Error((await extractErrorMessage(response)) ?? 'Failed to copy previous month budgets.')
     }
 
     await reload()
@@ -189,7 +160,6 @@ function useBudgetsData({ userId }: UseBudgetsDataArgs) {
     error,
     saveBudget,
     deleteBudget,
-    copyPreviousMonthBudgets,
     reload,
   }
 }

@@ -5,7 +5,7 @@ import useDevelopmentBootstrap from '../hooks/useDevelopmentBootstrap'
 
 function GoalCreatePage() {
   const navigate = useNavigate()
-  const { createGoal, accounts } = useDevelopmentBootstrap()
+  const { createGoal, activeAccounts } = useDevelopmentBootstrap()
   const [name, setName] = useState('')
   const [targetAmount, setTargetAmount] = useState('')
   const [targetDate, setTargetDate] = useState('')
@@ -83,7 +83,7 @@ function GoalCreatePage() {
               <span>Reference account</span>
               <select value={linkedAccountId} onChange={(event) => setLinkedAccountId(event.target.value)}>
                 <option value="">Select account</option>
-                {accounts.map((account) => (
+                {activeAccounts.map((account) => (
                   <option key={account.id} value={account.id}>
                     {account.name}
                   </option>

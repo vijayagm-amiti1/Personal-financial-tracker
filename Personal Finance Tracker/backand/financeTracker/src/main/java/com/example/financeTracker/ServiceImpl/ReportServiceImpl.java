@@ -37,10 +37,10 @@ public class ReportServiceImpl implements ReportService {
         LocalDate endDate = yearMonth.atEndOfMonth();
 
         userRepository.existsById(userId);
-        accountRepository.findByIdAndUserId(accountId, userId);
+        accountRepository.findByIdAndUserIdAndIsActiveTrue(accountId, userId);
 
         List<Transaction> transactions = transactionRepository
-                .findAllByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(userId, startDate, endDate);
+                .findAllByUserIdAndAccountIsActiveTrueAndTransactionDateBetweenOrderByTransactionDateDesc(userId, startDate, endDate);
 
         Map<Integer, double[]> dailyTotals = new LinkedHashMap<>();
         for (int day = 1; day <= yearMonth.lengthOfMonth(); day++) {
@@ -105,10 +105,10 @@ public class ReportServiceImpl implements ReportService {
         LocalDate endDate = yearMonth.atEndOfMonth();
 
         userRepository.existsById(userId);
-        accountRepository.findByIdAndUserId(accountId, userId);
+        accountRepository.findByIdAndUserIdAndIsActiveTrue(accountId, userId);
 
         List<Transaction> transactions = transactionRepository
-                .findAllByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(userId, startDate, endDate);
+                .findAllByUserIdAndAccountIsActiveTrueAndTransactionDateBetweenOrderByTransactionDateDesc(userId, startDate, endDate);
 
         Map<UUID, CategorySpendingReportDTO> categoryTotals = new LinkedHashMap<>();
 

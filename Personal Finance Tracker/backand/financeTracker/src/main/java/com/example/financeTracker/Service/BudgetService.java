@@ -25,7 +25,5 @@ public interface BudgetService {
 
     Optional<Budget> getBudgetByCategoryAndPeriod(UUID userId, UUID categoryId, Integer month, Integer year);
 
-    List<BudgetResponse> copyPreviousMonthBudgets(UUID userId, Integer month, Integer year);
-
     void deleteBudget(UUID budgetId, UUID userId);
 }

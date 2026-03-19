@@ -14,68 +14,68 @@ const STORAGE_KEYS = {
   goals: 'financeTracker.dev.goals',
 } as const
 
-const seededUser: DevUser = {
-  id: '00000000-0000-0000-0000-000000002001',
-  email: 'akash@financetracker.local',
-  displayName: 'akash',
-}
-
 const seededAccounts: DevAccount[] = [
   {
-    id: '00000000-0000-0000-0000-000000002020',
-    userId: seededUser.id,
-    name: 'akash_axis_primary',
+    id: '00000000-0000-0000-0000-000000004030',
+    userId: '00000000-0000-0000-0000-000000004001',
+    name: 'demo2_hdfc_primary',
     type: 'checking',
-    institutionName: 'Axis Bank',
-    currentBalance: 177770,
+    institutionName: 'HDFC Bank',
+    openingBalance: 240000,
+    currentBalance: 240000,
+    isActive: true,
   },
   {
-    id: '00000000-0000-0000-0000-000000002021',
-    userId: seededUser.id,
-    name: 'akash_icici_reserve',
+    id: '00000000-0000-0000-0000-000000004031',
+    userId: '00000000-0000-0000-0000-000000004001',
+    name: 'demo2_sbi_reserve',
     type: 'savings',
-    institutionName: 'ICICI Bank',
-    currentBalance: 105659,
+    institutionName: 'SBI',
+    openingBalance: 125000,
+    currentBalance: 125000,
+    isActive: true,
   },
   {
-    id: '00000000-0000-0000-0000-000000002022',
-    userId: seededUser.id,
-    name: 'akash_wallet_cash',
+    id: '00000000-0000-0000-0000-000000004032',
+    userId: '00000000-0000-0000-0000-000000004001',
+    name: 'demo2_wallet_cash',
     type: 'cash',
     institutionName: 'Cash Wallet',
-    currentBalance: 7861,
+    openingBalance: 18000,
+    currentBalance: 18000,
+    isActive: true,
   },
 ]
 
 const seededGoals: DevGoal[] = [
   {
-    id: '00000000-0000-0000-0000-000000002030',
-    userId: seededUser.id,
-    name: 'Emergency Corpus',
-    targetAmount: 180000,
-    currentAmount: 10500,
+    id: '00000000-0000-0000-0000-000000004040',
+    userId: '00000000-0000-0000-0000-000000004001',
+    name: 'Emergency Reserve',
+    targetAmount: 250000,
+    currentAmount: 16200,
     targetDate: '2026-12-31',
-    linkedAccountId: '00000000-0000-0000-0000-000000002021',
+    linkedAccountId: '00000000-0000-0000-0000-000000004031',
     status: 'active',
   },
   {
-    id: '00000000-0000-0000-0000-000000002031',
-    userId: seededUser.id,
-    name: 'Japan Trip',
-    targetAmount: 95000,
-    currentAmount: 6700,
-    targetDate: '2026-11-15',
-    linkedAccountId: '00000000-0000-0000-0000-000000002021',
+    id: '00000000-0000-0000-0000-000000004041',
+    userId: '00000000-0000-0000-0000-000000004001',
+    name: 'Europe Vacation',
+    targetAmount: 180000,
+    currentAmount: 10200,
+    targetDate: '2026-11-20',
+    linkedAccountId: '00000000-0000-0000-0000-000000004031',
     status: 'active',
   },
   {
-    id: '00000000-0000-0000-0000-000000002032',
-    userId: seededUser.id,
-    name: 'Studio Laptop',
-    targetAmount: 135000,
-    currentAmount: 5800,
-    targetDate: '2026-10-30',
-    linkedAccountId: '00000000-0000-0000-0000-000000002020',
+    id: '00000000-0000-0000-0000-000000004042',
+    userId: '00000000-0000-0000-0000-000000004001',
+    name: 'Workstation Upgrade',
+    targetAmount: 150000,
+    currentAmount: 9800,
+    targetDate: '2026-10-15',
+    linkedAccountId: '00000000-0000-0000-0000-000000004030',
     status: 'active',
   },
 ]
@@ -99,16 +99,24 @@ function writeJson<T>(key: string, value: T) {
 }
 
 export function initializeDevelopmentStorage() {
-  if (!localStorage.getItem(STORAGE_KEYS.user)) {
-    writeJson(STORAGE_KEYS.user, seededUser)
+  const existingUser = readJson<DevUser | null>(STORAGE_KEYS.user, null)
+
+  if (existingUser === null) {
+    return
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.accounts)) {
-    writeJson(STORAGE_KEYS.accounts, seededAccounts)
+    writeJson(
+      STORAGE_KEYS.accounts,
+      seededAccounts.map((account) => ({ ...account, userId: existingUser.id })),
+    )
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.goals)) {
-    writeJson(STORAGE_KEYS.goals, seededGoals)
+    writeJson(
+      STORAGE_KEYS.goals,
+      seededGoals.map((goal) => ({ ...goal, userId: existingUser.id })),
+    )
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.categories)) {
@@ -117,7 +125,11 @@ export function initializeDevelopmentStorage() {
 }
 
 export function getStoredUser() {
-  return readJson(STORAGE_KEYS.user, seededUser)
+  return readJson<DevUser | null>(STORAGE_KEYS.user, null)
+}
+
+export function setStoredUser(user: DevUser) {
+  writeJson(STORAGE_KEYS.user, user)
 }
 
 export function getStoredAccounts() {
@@ -142,4 +154,12 @@ export function getStoredGoals() {
 
 export function setStoredGoals(goals: DevGoal[]) {
   writeJson(STORAGE_KEYS.goals, goals)
+}
+
+export function clearStoredUser() {
+  localStorage.removeItem(STORAGE_KEYS.user)
+}
+
+export function clearDevelopmentStorage() {
+  Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key))
 }
