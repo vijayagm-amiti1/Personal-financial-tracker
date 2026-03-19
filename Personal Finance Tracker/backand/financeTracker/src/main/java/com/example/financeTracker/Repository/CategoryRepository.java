@@ -13,4 +13,6 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
     List<Category> findAllByUserIdAndIsArchivedFalse(UUID userId);
 
     Optional<Category> findByIdAndUserId(UUID id, UUID userId);
+
+    Optional<Category> findByUserIdAndNameIgnoreCase(UUID userId, String name);
 }

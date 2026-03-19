@@ -54,6 +54,14 @@ public class TransactionRequest {
         return !"transfer".equalsIgnoreCase(type) || toAccountId != null;
     }
 
+    @AssertTrue(message = "toAccountId is allowed only when type is transfer")
+    public boolean isToAccountAllowedOnlyForTransfer() {
+        if (type == null) {
+            return true;
+        }
+        return "transfer".equalsIgnoreCase(type) || toAccountId == null;
+    }
+
     @AssertTrue(message = "type must be expense, income, or transfer")
     public boolean isTypeSupported() {
         if (type == null || type.isBlank()) {

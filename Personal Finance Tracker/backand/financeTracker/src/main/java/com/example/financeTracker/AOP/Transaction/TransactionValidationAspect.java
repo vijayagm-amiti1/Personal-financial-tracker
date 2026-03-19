@@ -27,7 +27,7 @@ public class TransactionValidationAspect {
             + " || (execution(* com.example.financeTracker.Service.TransactionService.updateTransaction(..)) && args(transactionId, request, userId))")
     public void validateTransactionRequest(JoinPoint joinPoint, TransactionRequest request, UUID userId) {
         if (userId == null) {
-            throw new BadRequestException("Authenticated user is required");
+            throw new BadRequestException("userId is required");
         }
         if (request == null) {
             throw new BadRequestException("Transaction request cannot be null");
@@ -47,6 +47,9 @@ public class TransactionValidationAspect {
         if ("transfer".equalsIgnoreCase(request.getType()) && request.getToAccountId() == null) {
             throw new BadRequestException("toAccountId is required when type is transfer");
         }
+        if (!"transfer".equalsIgnoreCase(request.getType()) && request.getToAccountId() != null) {
+            throw new BadRequestException("toAccountId is allowed only when type is transfer");
+        }
         if (request.getToAccountId() != null && request.getToAccountId().equals(request.getAccountId())) {
             throw new BadRequestException("toAccountId must be different from accountId");
         }
@@ -57,7 +60,7 @@ public class TransactionValidationAspect {
     @Before("execution(* com.example.financeTracker.Service.TransactionService.deleteTransaction(..)) && args(transactionId, userId)")
     public void validateDeleteTransaction(JoinPoint joinPoint, UUID transactionId, UUID userId) {
         if (userId == null) {
-            throw new BadRequestException("Authenticated user is required");
+            throw new BadRequestException("userId is required");
         }
         if (transactionId == null) {
             throw new BadRequestException("transactionId is required");

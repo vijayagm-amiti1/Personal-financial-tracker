@@ -1,0 +1,168 @@
+{
+  "baseUrl": "http://localhost:8080",
+  "transactions": {
+    "getByUser": {
+      "method": "GET",
+      "path": "/api/transactions/user/{userId}",
+      "pathParams": ["userId"]
+    },
+    "getByAccount": {
+      "method": "GET",
+      "path": "/api/transactions/account/{accountId}",
+      "pathParams": ["accountId"],
+      "queryParams": ["userId"]
+    },
+    "getById": {
+      "method": "GET",
+      "path": "/api/transactions/{transactionId}",
+      "pathParams": ["transactionId"],
+      "queryParams": ["userId"]
+    },
+    "create": {
+      "method": "POST",
+      "path": "/api/transactions",
+      "queryParams": ["userId"]
+    },
+    "update": {
+      "method": "PUT",
+      "path": "/api/transactions/{transactionId}",
+      "pathParams": ["transactionId"],
+      "queryParams": ["userId"]
+    },
+    "delete": {
+      "method": "DELETE",
+      "path": "/api/transactions/{transactionId}",
+      "pathParams": ["transactionId"],
+      "queryParams": ["userId"]
+    }
+  },
+  "categories": {
+    "create": {
+      "method": "POST",
+      "path": "/api/categories",
+      "queryParams": ["userId"]
+    },
+    "getAll": {
+      "method": "GET",
+      "path": "/api/categories",
+      "queryParams": ["userId"]
+    },
+    "getById": {
+      "method": "GET",
+      "path": "/api/categories/{categoryId}",
+      "pathParams": ["categoryId"],
+      "queryParams": ["userId"]
+    },
+    "update": {
+      "method": "PUT",
+      "path": "/api/categories/{categoryId}",
+      "pathParams": ["categoryId"],
+      "queryParams": ["userId"]
+    },
+    "delete": {
+      "method": "DELETE",
+      "path": "/api/categories/{categoryId}",
+      "pathParams": ["categoryId"],
+      "queryParams": ["userId"]
+    }
+  },
+  "budgets": {
+    "create": {
+      "method": "POST",
+      "path": "/api/budgets",
+      "queryParams": ["userId"]
+    },
+    "getAll": {
+      "method": "GET",
+      "path": "/api/budgets",
+      "queryParams": ["userId"]
+    },
+    "getById": {
+      "method": "GET",
+      "path": "/api/budgets/{budgetId}",
+      "pathParams": ["budgetId"],
+      "queryParams": ["userId"]
+    },
+    "update": {
+      "method": "PUT",
+      "path": "/api/budgets/{budgetId}",
+      "pathParams": ["budgetId"],
+      "queryParams": ["userId"]
+    },
+    "copyPrevious": {
+      "method": "POST",
+      "path": "/api/budgets/copy-previous",
+      "queryParams": ["userId", "month", "year"]
+    },
+    "delete": {
+      "method": "DELETE",
+      "path": "/api/budgets/{budgetId}",
+      "pathParams": ["budgetId"],
+      "queryParams": ["userId"]
+    }
+  },
+  "goals": {
+    "create": {
+      "method": "POST",
+      "path": "/api/goals",
+      "queryParams": ["userId"]
+    },
+    "contribute": {
+      "method": "POST",
+      "path": "/api/goals/contribute",
+      "queryParams": ["userId"]
+    },
+    "delete": {
+      "method": "DELETE",
+      "path": "/api/goals",
+      "queryParams": ["goalId", "userId"]
+    }
+  },
+  "notifications": {
+    "getAll": {
+      "method": "GET",
+      "path": "/api/notifications",
+      "queryParams": ["userId"]
+    },
+    "getById": {
+      "method": "GET",
+      "path": "/api/notifications/{notificationId}",
+      "pathParams": ["notificationId"],
+      "queryParams": ["userId"]
+    },
+    "markAsRead": {
+      "method": "PUT",
+      "path": "/api/notifications/{notificationId}/read",
+      "pathParams": ["notificationId"],
+      "queryParams": ["userId"]
+    },
+    "markAllAsRead": {
+      "method": "PUT",
+      "path": "/api/notifications/read-all",
+      "queryParams": ["userId"]
+    },
+    "deleteById": {
+      "method": "DELETE",
+      "path": "/api/notifications/{notificationId}",
+      "pathParams": ["notificationId"],
+      "queryParams": ["userId"]
+    },
+    "deleteAll": {
+      "method": "DELETE",
+      "path": "/api/notifications",
+      "queryParams": ["userId"]
+    }
+  },
+  "reports": {
+    "monthlyDaily": {
+      "method": "GET",
+      "path": "/api/reports/monthly-daily",
+      "queryParams": ["userId", "accountId", "month", "year"]
+    },
+    "monthlyCategorySpending": {
+      "method": "GET",
+      "path": "/api/reports/monthly-category-spending",
+      "queryParams": ["userId", "accountId", "month", "year"]
+    }
+  }
+}

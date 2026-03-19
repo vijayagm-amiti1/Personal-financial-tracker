@@ -47,6 +47,10 @@ public class Goal {
     @Column(name = "target_date")
     private LocalDate targetDate;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "linked_account_id", nullable = false)
+    private Account linkedAccount;
+
     @Builder.Default
     @Column(nullable = false, length = 30)
     private String status = "active";

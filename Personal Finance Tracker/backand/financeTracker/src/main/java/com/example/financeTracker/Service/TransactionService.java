@@ -16,6 +16,12 @@ public interface TransactionService {
 
     Transaction saveTransaction(Transaction transaction);
 
+    List<TransactionResponse> getTransactionResponsesByUserId(UUID userId);
+
+    List<TransactionResponse> getTransactionResponsesByAccountId(UUID accountId, UUID userId);
+
+    TransactionResponse getTransactionResponseById(UUID transactionId, UUID userId);
+
     List<Transaction> getTransactionsByUserId(UUID userId);
 
     List<Transaction> getTransactionsByUserIdAndDateRange(UUID userId, LocalDate startDate, LocalDate endDate);

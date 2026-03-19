@@ -46,6 +46,10 @@ public class Budget {
     private BigDecimal amount;
 
     @Builder.Default
+    @Column(name = "current_spent", nullable = false, precision = 12, scale = 2)
+    private BigDecimal currentSpent = BigDecimal.ZERO;
+
+    @Builder.Default
     @Column(name = "alert_threshold_percent")
     private Integer alertThresholdPercent = 80;
 }

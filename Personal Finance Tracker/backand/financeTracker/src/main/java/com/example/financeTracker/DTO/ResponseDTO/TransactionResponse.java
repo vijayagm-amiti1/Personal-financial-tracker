@@ -20,6 +20,7 @@ public class TransactionResponse {
     private UUID accountId;
     private UUID toAccountId;
     private UUID categoryId;
+    private UUID goalId;
     private String type;
     private BigDecimal amount;
     private LocalDate date;

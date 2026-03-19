@@ -3,7 +3,7 @@
 ## 1. Project Identity & Stack
 - **Project Name:** Personal Finance Tracker
 - **Frontend:** React (Stable), TanStack Query, Zustand, Tailwind CSS, Recharts.
-- **Backend:** ASP.NET Core (Web API), Entity Framework Core.
+- **Backend:** spring Bote (Web API), Entity Framework Core.
 - **Database:** PostgreSQL (using UUIDs for all Primary Keys).
 - **Core Principle:** Clean, calm, finance-focused UI. Accuracy and security are top priorities.
 

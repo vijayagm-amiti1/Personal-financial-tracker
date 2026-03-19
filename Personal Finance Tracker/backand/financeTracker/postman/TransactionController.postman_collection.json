@@ -1,0 +1,254 @@
+{
+  "info": {
+    "_postman_id": "4c9e31de-3d3c-4d29-9e03-fd2ef0d6b725",
+    "name": "Finance Tracker - Transaction Controller",
+    "description": "Postman collection for transaction endpoints. Update the collection variables with valid UUIDs from your database before running create, update, or delete requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "userId",
+      "value": "11111111-1111-1111-1111-111111111111"
+    },
+    {
+      "key": "accountId",
+      "value": "22222222-2222-2222-2222-222222222222"
+    },
+    {
+      "key": "toAccountId",
+      "value": "33333333-3333-3333-3333-333333333333"
+    },
+    {
+      "key": "categoryId",
+      "value": "44444444-4444-4444-4444-444444444444"
+    },
+    {
+      "key": "transactionId",
+      "value": "55555555-5555-5555-5555-555555555555"
+    }
+  ],
+  "item": [
+    {
+      "name": "Get Transactions By User",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions/user/{{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "user",
+            "{{userId}}"
+          ]
+        },
+        "description": "Returns all transactions for the given user."
+      },
+      "response": []
+    },
+    {
+      "name": "Get Transactions By Account",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions/account/{{accountId}}?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "account",
+            "{{accountId}}"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        },
+        "description": "Returns all transactions for one account owned by the given user."
+      },
+      "response": []
+    },
+    {
+      "name": "Get Transaction By Id",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions/{{transactionId}}?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "{{transactionId}}"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        },
+        "description": "Returns one transaction by its id."
+      },
+      "response": []
+    },
+    {
+      "name": "Create Transaction - Expense",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"expense\",\n  \"amount\": 245.75,\n  \"date\": \"2026-03-15\",\n  \"accountId\": \"{{accountId}}\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"merchant\": \"Reliance Fresh\",\n  \"note\": \"Weekly grocery shopping\",\n  \"paymentMethod\": \"UPI\",\n  \"tags\": [\n    \"grocery\",\n    \"essentials\"\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        },
+        "description": "Dummy insert payload for an expense transaction."
+      },
+      "response": []
+    },
+    {
+      "name": "Create Transaction - Transfer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"transfer\",\n  \"amount\": 5000.00,\n  \"date\": \"2026-03-15\",\n  \"accountId\": \"{{accountId}}\",\n  \"toAccountId\": \"{{toAccountId}}\",\n  \"merchant\": \"Internal Transfer\",\n  \"note\": \"Move money to savings\",\n  \"paymentMethod\": \"Bank Transfer\",\n  \"tags\": [\n    \"transfer\",\n    \"savings\"\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        },
+        "description": "Dummy insert payload for a transfer transaction."
+      },
+      "response": []
+    },
+    {
+      "name": "Update Transaction",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"expense\",\n  \"amount\": 199.99,\n  \"date\": \"2026-03-16\",\n  \"accountId\": \"{{accountId}}\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"merchant\": \"DMart\",\n  \"note\": \"Updated grocery bill\",\n  \"paymentMethod\": \"Credit Card\",\n  \"tags\": [\n    \"updated\",\n    \"monthly\"\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions/{{transactionId}}?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "{{transactionId}}"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        },
+        "description": "Dummy update payload for an existing transaction."
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Transaction",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions/{{transactionId}}?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "{{transactionId}}"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        },
+        "description": "Deletes the given transaction. Replace {{transactionId}} with an existing transaction id before running."
+      },
+      "response": []
+    }
+  ]
+}

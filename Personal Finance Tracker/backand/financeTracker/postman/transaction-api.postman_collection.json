@@ -1,0 +1,217 @@
+{
+  "info": {
+    "_postman_id": "a1f0f3b7-6f7f-4b1e-9d1a-9a8d0f5c1001",
+    "name": "Personal Finance Tracker - Transaction API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Transaction API requests for create, update, delete, and read operations using the seeded admin dummy data."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "userId",
+      "value": "00000000-0000-0000-0000-000000000001"
+    },
+    {
+      "key": "account1Id",
+      "value": "00000000-0000-0000-0000-000000000020"
+    },
+    {
+      "key": "account2Id",
+      "value": "00000000-0000-0000-0000-000000000021"
+    },
+    {
+      "key": "account3Id",
+      "value": "00000000-0000-0000-0000-000000000022"
+    },
+    {
+      "key": "salaryCategoryId",
+      "value": "00000000-0000-0000-0000-000000000010"
+    },
+    {
+      "key": "groceriesCategoryId",
+      "value": "00000000-0000-0000-0000-000000000011"
+    },
+    {
+      "key": "transportCategoryId",
+      "value": "00000000-0000-0000-0000-000000000012"
+    },
+    {
+      "key": "rentCategoryId",
+      "value": "00000000-0000-0000-0000-000000000013"
+    },
+    {
+      "key": "seedTransactionId",
+      "value": "00000000-0000-0000-0000-000000000030"
+    },
+    {
+      "key": "updateTransactionId",
+      "value": "00000000-0000-0000-0000-000000000031"
+    },
+    {
+      "key": "deleteTransactionId",
+      "value": "00000000-0000-0000-0000-000000000033"
+    }
+  ],
+  "item": [
+    {
+      "name": "Get Transactions By User",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions/user/{{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "user",
+            "{{userId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Transactions By Account",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions/account/{{account1Id}}?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "account",
+            "{{account1Id}}"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Transaction By Id",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions/{{seedTransactionId}}?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "{{seedTransactionId}}"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Transaction",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"expense\",\n  \"amount\": 650.00,\n  \"date\": \"2026-03-15\",\n  \"accountId\": \"{{account1Id}}\",\n  \"toAccountId\": null,\n  \"categoryId\": \"{{groceriesCategoryId}}\",\n  \"merchant\": \"Reliance Fresh\",\n  \"note\": \"Weekend groceries\",\n  \"paymentMethod\": \"upi\",\n  \"tags\": [\"home\", \"monthly\"]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Transaction",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"transfer\",\n  \"amount\": 2200.00,\n  \"date\": \"2026-03-16\",\n  \"accountId\": \"{{account1Id}}\",\n  \"toAccountId\": \"{{account2Id}}\",\n  \"categoryId\": \"{{rentCategoryId}}\",\n  \"merchant\": \"Internal Transfer\",\n  \"note\": \"Updated transfer to savings\",\n  \"paymentMethod\": \"bank_transfer\",\n  \"tags\": [\"savings\", \"edited\"]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions/{{updateTransactionId}}?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "{{updateTransactionId}}"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Transaction",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/transactions/{{deleteTransactionId}}?userId={{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "{{deleteTransactionId}}"
+          ],
+          "query": [
+            {
+              "key": "userId",
+              "value": "{{userId}}"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

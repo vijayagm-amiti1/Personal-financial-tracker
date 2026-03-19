@@ -11,8 +11,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     List<Transaction> findAllByUserIdOrderByTransactionDateDesc(UUID userId);
 
+    List<Transaction> findAllByAccountIdAndUserIdOrderByTransactionDateDesc(UUID accountId, UUID userId);
+
     List<Transaction> findAllByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
             UUID userId, LocalDate startDate, LocalDate endDate);
 
     Optional<Transaction> findByIdAndUserId(UUID id, UUID userId);
+
+    List<Transaction> findAllByGoalIdAndUserIdOrderByTransactionDateDesc(UUID goalId, UUID userId);
 }
