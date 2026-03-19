@@ -34,3 +34,4 @@ build/
 
 ### Local application secrets ###
 src/main/resources/application.properties
+application-prod.properties
