@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { loadEndpointConfig } from '../config/endpoints'
 import type { DevAccount, DevCategory, EndpointConfig } from '../types/report'
 import type {
   TransactionFilters,
   TransactionFormValues,
   TransactionRecord,
 } from '../types/transaction'
-import { dispatchNotificationsRefresh } from '../utils/appEvents'
+import { dispatchNotificationsRefresh, dispatchTransactionCreated } from '../utils/appEvents'
 import { authFetch } from '../utils/authFetch'
 
 type UseTransactionsDataArgs = {
@@ -30,16 +31,6 @@ const defaultFilters: TransactionFilters = {
   dateTo: '',
   minAmount: '',
   maxAmount: '',
-}
-
-async function loadEndpointConfig(): Promise<EndpointConfig> {
-  const response = await fetch('/endpoints.json')
-
-  if (!response.ok) {
-    throw new Error('Failed to load endpoint configuration.')
-  }
-
-  return response.json()
 }
 
 async function extractErrorMessage(response: Response) {
@@ -237,6 +228,9 @@ function useTransactionsData({
 
     await reload()
     dispatchNotificationsRefresh()
+    if (!transactionId) {
+      dispatchTransactionCreated()
+    }
   }
 
   const deleteTransaction = async (transactionId: string) => {

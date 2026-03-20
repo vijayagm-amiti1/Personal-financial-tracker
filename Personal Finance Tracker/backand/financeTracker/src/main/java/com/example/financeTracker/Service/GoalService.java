@@ -10,6 +10,8 @@ import java.util.UUID;
 
 public interface GoalService {
 
+    List<GoalResponse> getGoalResponsesByUserId(UUID userId);
+
     GoalResponse createGoal(GoalRequest request, UUID userId);
 
     GoalResponse contributeToGoal(GoalContributionRequest request, UUID userId);

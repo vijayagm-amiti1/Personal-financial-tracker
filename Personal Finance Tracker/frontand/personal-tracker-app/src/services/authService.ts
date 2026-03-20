@@ -8,11 +8,16 @@ import type {
   ResetPasswordPayload,
   VerifyOtpPayload,
 } from '../types/auth'
+import { API_BASE_URL } from '../config/env'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080',
+  baseURL: API_BASE_URL,
   withCredentials: true,
 })
+
+export function getGoogleLoginUrl() {
+  return `${API_BASE_URL}/oauth2/authorization/google`
+}
 
 function extractErrorMessage(error: unknown) {
   if (axios.isAxiosError(error)) {

@@ -14,6 +14,7 @@ import { clearDevelopmentStorage, setStoredUser } from '../utils/devStorage'
 type AuthContextValue = {
   user: AuthUser | null
   isLoading: boolean
+  refreshUser: () => Promise<AuthUser | null>
   register: (payload: RegisterPayload) => Promise<string>
   verifyOtp: (payload: VerifyOtpPayload) => Promise<string>
   completeSignup: (payload: CompleteSignupPayload) => Promise<string>
@@ -29,18 +30,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  const refreshUser = async () => {
+    const currentUser = await authService.me()
+    setUser(currentUser)
+    if (currentUser) {
+      setStoredUser(currentUser)
+    } else {
+      clearDevelopmentStorage()
+    }
+    return currentUser
+  }
+
   useEffect(() => {
     let active = true
-    void authService.me()
-      .then((currentUser) => {
+    void refreshUser()
+      .then(() => {
         if (!active) {
           return
-        }
-        setUser(currentUser)
-        if (currentUser) {
-          setStoredUser(currentUser)
-        } else {
-          clearDevelopmentStorage()
         }
       })
       .finally(() => {
@@ -57,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextValue>(() => ({
     user,
     isLoading,
+    refreshUser,
     register: async (payload) => (await authService.register(payload)).message,
     verifyOtp: async (payload) => (await authService.verifyOtp(payload)).message,
     completeSignup: async (payload) => (await authService.completeSignup(payload)).message,

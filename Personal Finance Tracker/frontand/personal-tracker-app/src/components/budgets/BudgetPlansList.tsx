@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import type { BudgetRecord } from '../../types/budget'
 import { renderCategoryIcon } from '../../utils/categoryIcons'
 
@@ -81,7 +82,12 @@ function BudgetPlansList({ budgets, onEdit, onDelete }: BudgetPlansListProps) {
             </div>
 
             <div className="goal-progress-track" aria-hidden="true">
-              <div className="budget-progress-fill" style={{ width: `${fillWidth}%` }} />
+              <motion.div
+                className="budget-progress-fill"
+                initial={{ width: 0 }}
+                animate={{ width: `${fillWidth}%` }}
+                transition={{ duration: 0.8, ease: [0.2, 0.9, 0.25, 1], delay: 0.05 }}
+              />
             </div>
 
             <div className="budget-scale-row" aria-hidden="true">

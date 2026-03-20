@@ -1,0 +1,19 @@
+# Ignore Environment Files
+.env
+.env.local
+.env.*.local
+
+# Ignore Node Modules
+node_modules/
+**/node_modules/
+
+# Ignore IDE/System files
+.vscode/
+.idea/
+.DS_Store
+dist/
+build/
+target/
+
+application-prod.properties
+application.properties

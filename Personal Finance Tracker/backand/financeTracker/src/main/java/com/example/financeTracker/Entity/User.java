@@ -23,7 +23,7 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(name = "password_hash", nullable = false) // Maps Java field to SQL column name
+    @Column(name = "password_hash") // Null means the account currently uses Google login only
     private String passwordHash;
 
     @Column(name = "display_name", length = 120)

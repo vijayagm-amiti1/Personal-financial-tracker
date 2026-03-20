@@ -150,6 +150,10 @@ export type EndpointConfig = {
     }
   }
   goals?: {
+    getAll?: {
+      method: string
+      path: string
+    }
     create?: {
       method: string
       path: string

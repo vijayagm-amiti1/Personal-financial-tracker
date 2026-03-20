@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { loadEndpointConfig } from '../config/endpoints'
 import type { DevAccount, DevCategory, EndpointConfig } from '../types/report'
 import type { RecurringFormValues, RecurringRecord } from '../types/recurring'
 import { authFetch } from '../utils/authFetch'
@@ -7,16 +8,6 @@ type UseRecurringDataArgs = {
   userId: string
   accounts: DevAccount[]
   categories: DevCategory[]
-}
-
-async function loadEndpointConfig(): Promise<EndpointConfig> {
-  const response = await fetch('/endpoints.json')
-
-  if (!response.ok) {
-    throw new Error('Failed to load endpoint configuration.')
-  }
-
-  return response.json()
 }
 
 async function extractErrorMessage(response: Response) {

@@ -20,6 +20,7 @@ import com.example.financeTracker.Repository.UserRepository;
 import com.example.financeTracker.Security.JwtService;
 import com.example.financeTracker.Service.AuthMailService;
 import com.example.financeTracker.Service.AuthService;
+import com.example.financeTracker.Service.UserSettingsService;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -45,6 +46,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final AuthMailService authMailService;
+    private final UserSettingsService userSettingsService;
 
     @Value("${app.auth.reset_password_base_url}")
     private String resetPasswordBaseUrl;
@@ -53,8 +55,9 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthMessageResponse register(RegisterRequest request) {
         String normalizedEmail = request.email().trim().toLowerCase();
-        if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new BadRequestException("Email is already registered");
+        User existingUser = userRepository.findByEmail(normalizedEmail).orElse(null);
+        if (existingUser != null && existingUser.getPasswordHash() != null && !existingUser.getPasswordHash().isBlank()) {
+            throw new BadRequestException("User already exists. Please login.");
         }
 
         String otp = generateOtp();
@@ -95,23 +98,34 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String normalizedEmail = request.email().trim().toLowerCase();
-        if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new BadRequestException("Email is already registered");
-        }
-
         PendingSignup pendingSignup = findPendingSignupByEmail(normalizedEmail);
         if (pendingSignup.getVerifiedAt() == null) {
             throw new BadRequestException("Verify OTP before setting password");
         }
 
-        User user = User.builder()
-                .email(normalizedEmail)
-                .passwordHash(passwordEncoder.encode(request.password()))
-                .displayName(pendingSignup.getDisplayName())
-                .isActive(Boolean.TRUE)
-                .emailVerifiedAt(pendingSignup.getVerifiedAt())
-                .build();
-        userRepository.save(user);
+        User existingUser = userRepository.findByEmail(normalizedEmail).orElse(null);
+        User savedUser;
+        if (existingUser != null) {
+            if (existingUser.getPasswordHash() != null && !existingUser.getPasswordHash().isBlank()) {
+                throw new BadRequestException("User already exists. Please login.");
+            }
+            existingUser.setPasswordHash(passwordEncoder.encode(request.password()));
+            existingUser.setDisplayName(pendingSignup.getDisplayName());
+            existingUser.setIsActive(Boolean.TRUE);
+            existingUser.setEmailVerifiedAt(pendingSignup.getVerifiedAt());
+            savedUser = userRepository.save(existingUser);
+        } else {
+            User user = User.builder()
+                    .email(normalizedEmail)
+                    .passwordHash(passwordEncoder.encode(request.password()))
+                    .displayName(pendingSignup.getDisplayName())
+                    .isActive(Boolean.TRUE)
+                    .emailVerifiedAt(pendingSignup.getVerifiedAt())
+                    .build();
+            savedUser = userRepository.save(user);
+            userSettingsService.createDefaultSettingsForUser(savedUser);
+        }
+
         pendingSignupRepository.delete(pendingSignup);
         return new AuthMessageResponse("Signup completed successfully.");
     }
@@ -119,6 +133,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthUserResponse login(LoginRequest request) {
         String normalizedEmail = request.email().trim().toLowerCase();
+        User user = findUserByEmail(normalizedEmail);
+        if (user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+            throw new UnauthorizedException("This account uses Google login. Sign up to set a password first.");
+        }
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(normalizedEmail, request.password())
@@ -129,10 +147,39 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException("Invalid email or password");
         }
 
-        User user = findUserByEmail(normalizedEmail);
         if (!Boolean.TRUE.equals(user.getIsActive())) {
             throw new UnauthorizedException("Verify your email before logging in");
         }
+        return mapUser(user);
+    }
+
+    @Override
+    @Transactional
+    public AuthUserResponse loginWithGoogle(String email, String displayName) {
+        String normalizedEmail = email.trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .map(existingUser -> {
+                    if (existingUser.getDisplayName() == null || existingUser.getDisplayName().isBlank()) {
+                        existingUser.setDisplayName(displayName);
+                    }
+                    existingUser.setIsActive(Boolean.TRUE);
+                    if (existingUser.getEmailVerifiedAt() == null) {
+                        existingUser.setEmailVerifiedAt(LocalDateTime.now());
+                    }
+                    return userRepository.save(existingUser);
+                })
+                .orElseGet(() -> {
+                    User createdUser = userRepository.save(User.builder()
+                            .email(normalizedEmail)
+                            .passwordHash(null)
+                            .displayName(displayName == null || displayName.isBlank() ? normalizedEmail : displayName.trim())
+                            .isActive(Boolean.TRUE)
+                            .emailVerifiedAt(LocalDateTime.now())
+                            .build());
+                    userSettingsService.createDefaultSettingsForUser(createdUser);
+                    return createdUser;
+                });
+
         return mapUser(user);
     }
 
@@ -156,6 +203,9 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthMessageResponse forgotPassword(ForgotPasswordRequest request) {
         User user = findUserByEmail(request.email());
+        if (user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+            throw new BadRequestException("This account uses Google login. Sign up to set a password first.");
+        }
         passwordResetTokenRepository.deleteByUser(user);
 
         PasswordResetToken token = passwordResetTokenRepository.save(PasswordResetToken.builder()

@@ -10,6 +10,7 @@ type TransactionTableProps = {
   page: number
   totalPages: number
   onPageChange: (page: number) => void
+  onView: (transaction: TransactionRecord) => void
   onEdit: (transaction: TransactionRecord) => void
   onDelete: (transactionId: string) => Promise<void>
 }
@@ -34,6 +35,7 @@ function TransactionTable({
   page,
   totalPages,
   onPageChange,
+  onView,
   onEdit,
   onDelete,
 }: TransactionTableProps) {
@@ -107,6 +109,13 @@ function TransactionTable({
                 <td>{transaction.note ?? '-'}</td>
                 <td>
                   <div className="table-actions">
+                    <button
+                      type="button"
+                      className="table-action-button"
+                      onClick={() => onView(transaction)}
+                    >
+                      View
+                    </button>
                     <button
                       type="button"
                       className="table-action-button"

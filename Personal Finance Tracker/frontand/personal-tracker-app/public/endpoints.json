@@ -101,6 +101,10 @@
     }
   },
   "goals": {
+    "getAll": {
+      "method": "GET",
+      "path": "/api/goals"
+    },
     "create": {
       "method": "POST",
       "path": "/api/goals"

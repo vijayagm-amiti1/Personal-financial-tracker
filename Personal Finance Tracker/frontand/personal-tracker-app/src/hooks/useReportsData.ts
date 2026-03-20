@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { loadEndpointConfig } from '../config/endpoints'
 import type {
   DevAccount,
   CategorySpendingReport,
@@ -28,16 +29,6 @@ function buildUrl(
   url.searchParams.set('month', String(filters.month))
   url.searchParams.set('year', String(filters.year))
   return url.toString()
-}
-
-async function loadEndpointConfig(): Promise<EndpointConfig> {
-  const response = await fetch('/endpoints.json')
-
-  if (!response.ok) {
-    throw new Error('Failed to load endpoint configuration.')
-  }
-
-  return response.json()
 }
 
 async function extractErrorMessage(response: Response) {

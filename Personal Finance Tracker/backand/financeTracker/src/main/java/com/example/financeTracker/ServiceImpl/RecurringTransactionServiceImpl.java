@@ -11,8 +11,10 @@ import com.example.financeTracker.Entity.User;
 import com.example.financeTracker.Exception.ResourceNotFoundException;
 import com.example.financeTracker.Repository.AccountRepository;
 import com.example.financeTracker.Repository.CategoryRepository;
+import com.example.financeTracker.Repository.NotificationRepository;
 import com.example.financeTracker.Repository.RecurringTransactionRepository;
 import com.example.financeTracker.Repository.UserRepository;
+import com.example.financeTracker.Service.NotificationEmailService;
 import com.example.financeTracker.Service.NotificationService;
 import com.example.financeTracker.Service.RecurringTransactionService;
 import com.example.financeTracker.Service.TransactionService;
@@ -39,6 +41,8 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
     private final AccountRepository accountRepository;
     private final TransactionService transactionService;
     private final NotificationService notificationService;
+    private final NotificationEmailService notificationEmailService;
+    private final NotificationRepository notificationRepository;
 
     @Override
     @Transactional
@@ -144,7 +148,7 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
                                 .paymentMethod("recurring_auto")
                                 .build(), recurringTransaction.getUser().getId());
                         processedTransactions += 1;
-                        createRecurringProcessedNotification(recurringTransaction);
+                        createRecurringProcessedNotification(recurringTransaction, recurringTransaction.getNextRunDate());
                     }
 
                     LocalDate followingRunDate = calculateNextRunDate(recurringTransaction.getNextRunDate(), recurringTransaction.getFrequency());
@@ -211,31 +215,49 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
 
             if (recurringTransaction.getNextRunDate() != null
                     && recurringTransaction.getNextRunDate().minusDays(3).isEqual(today)) {
+                String title = String.format("Upcoming recurring payment: %s %s",
+                        recurringTransaction.getTitle(),
+                        recurringTransaction.getNextRunDate());
+                String message = String.format("%s is due in 3 days on %s for %s.",
+                        recurringTransaction.getTitle(),
+                        recurringTransaction.getNextRunDate(),
+                        recurringTransaction.getAmount());
+                boolean alreadyExists = notificationRepository.existsByUserIdAndTypeAndTitle(
+                        recurringTransaction.getUser().getId(),
+                        NotificationType.DAILY_REMINDER,
+                        title);
                 notificationService.createNotificationIfAbsent(
                         recurringTransaction.getUser().getId(),
-                        String.format("Upcoming recurring payment: %s %s",
-                                recurringTransaction.getTitle(),
-                                recurringTransaction.getNextRunDate()),
-                        String.format("%s is due in 3 days on %s for %s.",
-                                recurringTransaction.getTitle(),
-                                recurringTransaction.getNextRunDate(),
-                                recurringTransaction.getAmount()),
+                        title,
+                        message,
                         NotificationType.DAILY_REMINDER);
+                if (!alreadyExists) {
+                    notificationEmailService.sendRecurringReminderIfEnabled(recurringTransaction.getUser(), recurringTransaction);
+                }
             }
         }
     }
 
-    private void createRecurringProcessedNotification(RecurringTransaction recurringTransaction) {
+    private void createRecurringProcessedNotification(RecurringTransaction recurringTransaction, LocalDate processedDate) {
+        String title = String.format("Recurring processed: %s %s",
+                recurringTransaction.getTitle(),
+                processedDate);
+        String message = String.format("Recurring %s transaction for %s was created on %s.",
+                recurringTransaction.getType(),
+                recurringTransaction.getAmount(),
+                processedDate);
+        boolean alreadyExists = notificationRepository.existsByUserIdAndTypeAndTitle(
+                recurringTransaction.getUser().getId(),
+                NotificationType.SYSTEM_UPDATE,
+                title);
         notificationService.createNotificationIfAbsent(
                 recurringTransaction.getUser().getId(),
-                String.format("Recurring processed: %s %s",
-                        recurringTransaction.getTitle(),
-                        recurringTransaction.getNextRunDate()),
-                String.format("Recurring %s transaction for %s was created on %s.",
-                        recurringTransaction.getType(),
-                        recurringTransaction.getAmount(),
-                        recurringTransaction.getNextRunDate()),
+                title,
+                message,
                 NotificationType.SYSTEM_UPDATE);
+        if (!alreadyExists) {
+            notificationEmailService.sendRecurringProcessedIfEnabled(recurringTransaction.getUser(), recurringTransaction, processedDate);
+        }
     }
 
     private RecurringTransactionResponse mapToResponse(RecurringTransaction recurringTransaction) {

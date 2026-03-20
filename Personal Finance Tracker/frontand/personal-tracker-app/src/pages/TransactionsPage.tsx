@@ -27,10 +27,15 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
+function formatTransactionType(type: TransactionRecord['type']) {
+  return type === 'goal_contribution' ? 'Goal contribution' : type
+}
+
 function TransactionsPage() {
   const navigate = useNavigate()
   const { user, accounts, activeAccounts, categories, createCategory } = useDevelopmentBootstrap()
   const [editingTransaction, setEditingTransaction] = useState<TransactionRecord | null>(null)
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const {
@@ -68,6 +73,16 @@ function TransactionsPage() {
       { income: 0, expense: 0, transfer: 0 },
     )
   }, [filteredTransactions])
+
+  const accountMap = useMemo(
+    () => new Map(accounts.map((account) => [account.id, account.name])),
+    [accounts],
+  )
+
+  const categoryMap = useMemo(
+    () => new Map(categories.map((category) => [category.id, category])),
+    [categories],
+  )
 
   const openCreateForm = () => {
     navigate('/transactions/new')
@@ -176,6 +191,10 @@ function TransactionsPage() {
           page={page}
           totalPages={totalPages}
           onPageChange={setPage}
+          onView={(transaction) => {
+            setSelectedTransaction(transaction)
+            setActionError(null)
+          }}
           onEdit={(transaction) => {
             setEditingTransaction(transaction)
             setActionError(null)
@@ -189,6 +208,100 @@ function TransactionsPage() {
           Refresh from backend
         </button>
       </div>
+
+      {selectedTransaction ? (
+        <div
+          className="modal-overlay"
+          role="presentation"
+          onClick={() => setSelectedTransaction(null)}
+        >
+          <div
+            className="modal-card transaction-detail-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Transaction details"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-card-header">
+              <div>
+                <h3>Transaction details</h3>
+                <p>Complete information for the selected transaction.</p>
+              </div>
+              <button
+                type="button"
+                className="table-action-button"
+                onClick={() => setSelectedTransaction(null)}
+              >
+                Back
+              </button>
+            </div>
+
+            <div className="modal-card-body">
+              <div className="transaction-detail-grid">
+                <article className="transaction-detail-panel">
+                  <span>Type</span>
+                  <strong>{formatTransactionType(selectedTransaction.type)}</strong>
+                </article>
+                <article className="transaction-detail-panel">
+                  <span>Amount</span>
+                  <strong>{formatCurrency(selectedTransaction.amount)}</strong>
+                </article>
+                <article className="transaction-detail-panel">
+                  <span>Date</span>
+                  <strong>{selectedTransaction.date}</strong>
+                </article>
+                <article className="transaction-detail-panel">
+                  <span>Account</span>
+                  <strong>{accountMap.get(selectedTransaction.accountId) ?? selectedTransaction.accountId}</strong>
+                </article>
+                <article className="transaction-detail-panel">
+                  <span>To account</span>
+                  <strong>
+                    {selectedTransaction.toAccountId
+                      ? accountMap.get(selectedTransaction.toAccountId) ?? selectedTransaction.toAccountId
+                      : '-'}
+                  </strong>
+                </article>
+                <article className="transaction-detail-panel">
+                  <span>Category</span>
+                  <strong>
+                    {selectedTransaction.categoryId
+                      ? categoryMap.get(selectedTransaction.categoryId)?.name ?? selectedTransaction.categoryId
+                      : '-'}
+                  </strong>
+                </article>
+                <article className="transaction-detail-panel">
+                  <span>Merchant</span>
+                  <strong>{selectedTransaction.merchant ?? '-'}</strong>
+                </article>
+                <article className="transaction-detail-panel">
+                  <span>Payment method</span>
+                  <strong>{selectedTransaction.paymentMethod ?? '-'}</strong>
+                </article>
+              </div>
+
+              <div className="transaction-detail-stack">
+                <article className="transaction-detail-panel">
+                  <span>Note</span>
+                  <strong>{selectedTransaction.note ?? 'No note added for this transaction.'}</strong>
+                </article>
+                <article className="transaction-detail-panel">
+                  <span>Created at</span>
+                  <strong>{selectedTransaction.createdAt}</strong>
+                </article>
+                <article className="transaction-detail-panel">
+                  <span>Updated at</span>
+                  <strong>{selectedTransaction.updatedAt}</strong>
+                </article>
+                <article className="transaction-detail-panel">
+                  <span>Transaction id</span>
+                  <strong className="transaction-detail-id">{selectedTransaction.id}</strong>
+                </article>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

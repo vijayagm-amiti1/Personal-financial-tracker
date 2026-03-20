@@ -2,9 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bell, ChevronDown, Menu, X } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
+import FinanceAssistant from '../chatbot/FinanceAssistant'
 import useNotifications from '../hooks/useNotifications'
 import type { NotificationRecord } from '../types/report'
-import { NOTIFICATIONS_REFRESH_EVENT } from '../utils/appEvents'
+import {
+  NOTIFICATIONS_REFRESH_EVENT,
+  SETTINGS_REFRESH_EVENT,
+  TRANSACTION_CREATED_EVENT,
+} from '../utils/appEvents'
+import { authFetch } from '../utils/authFetch'
+import { API_BASE_URL } from '../config/env'
 
 const navigationItems = [
   { label: 'Dashboard', to: '/dashboard' },
@@ -30,6 +37,42 @@ type NotificationMenuProps = {
 type ProfileMenuProps = {
   profileName: string
   onLogout: () => Promise<void>
+}
+
+type ToastState = {
+  id: number
+  message: string
+}
+
+function playCoinSound() {
+  try {
+    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AudioContextCtor) {
+      return
+    }
+
+    const audioContext = new AudioContextCtor()
+    const oscillator = audioContext.createOscillator()
+    const gainNode = audioContext.createGain()
+
+    oscillator.type = 'triangle'
+    oscillator.frequency.setValueAtTime(880, audioContext.currentTime)
+    oscillator.frequency.exponentialRampToValueAtTime(1320, audioContext.currentTime + 0.12)
+    gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime)
+    gainNode.gain.exponentialRampToValueAtTime(0.04, audioContext.currentTime + 0.03)
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.28)
+
+    oscillator.connect(gainNode)
+    gainNode.connect(audioContext.destination)
+    oscillator.start()
+    oscillator.stop(audioContext.currentTime + 0.28)
+
+    oscillator.onended = () => {
+      void audioContext.close()
+    }
+  } catch {
+    return
+  }
 }
 
 function NotificationMenu({
@@ -244,6 +287,9 @@ function ProfileMenu({ profileName, onLogout }: ProfileMenuProps) {
         <button type="button" className="profile-menu-item" onClick={() => handleNavigate('/faq')}>
           FAQ
         </button>
+        <button type="button" className="profile-menu-item" onClick={() => handleNavigate('/settings')}>
+          Settings
+        </button>
         <button type="button" className="profile-menu-item" onClick={() => handleNavigate('/report-issue')}>
           Report Issue
         </button>
@@ -270,6 +316,8 @@ function AppShell() {
   const { user, logout } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [profileName, setProfileName] = useState(() => user?.displayName ?? '')
+  const [navbarVerticalEnabled, setNavbarVerticalEnabled] = useState(false)
+  const [transactionToast, setTransactionToast] = useState<ToastState | null>(null)
   const {
     notifications,
     unreadCount,
@@ -288,6 +336,40 @@ function AppShell() {
   useEffect(() => {
     setProfileName(user?.displayName ?? '')
   }, [location.pathname, user])
+
+  useEffect(() => {
+    if (!user) {
+      setNavbarVerticalEnabled(false)
+      return
+    }
+
+    let active = true
+
+    const loadSettings = async () => {
+      const response = await authFetch(`${API_BASE_URL}/api/settings`)
+      if (!response.ok) {
+        return
+      }
+
+      const payload = (await response.json()) as { navbarVerticalEnabled?: boolean }
+      if (active) {
+        setNavbarVerticalEnabled(payload.navbarVerticalEnabled === true)
+      }
+    }
+
+    void loadSettings()
+
+    const handleSettingsRefresh = () => {
+      void loadSettings()
+    }
+
+    window.addEventListener(SETTINGS_REFRESH_EVENT, handleSettingsRefresh)
+
+    return () => {
+      active = false
+      window.removeEventListener(SETTINGS_REFRESH_EVENT, handleSettingsRefresh)
+    }
+  }, [user])
 
   useEffect(() => {
     const handleWindowFocus = () => {
@@ -314,6 +396,29 @@ function AppShell() {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [loadNotifications])
+
+  useEffect(() => {
+    let timeoutId: number | undefined
+
+    const handleTransactionCreated = () => {
+      playCoinSound()
+      setTransactionToast({
+        id: Date.now(),
+        message: 'Cha-ching! Transaction added',
+      })
+      window.clearTimeout(timeoutId)
+      timeoutId = window.setTimeout(() => {
+        setTransactionToast(null)
+      }, 2800)
+    }
+
+    window.addEventListener(TRANSACTION_CREATED_EVENT, handleTransactionCreated)
+
+    return () => {
+      window.removeEventListener(TRANSACTION_CREATED_EVENT, handleTransactionCreated)
+      window.clearTimeout(timeoutId)
+    }
+  }, [])
 
   const handleNotificationOpen = async (notification: NotificationRecord) => {
     let detailedNotification = notification
@@ -384,7 +489,7 @@ function AppShell() {
   ))
 
   return (
-    <div className="app-shell">
+    <div className={navbarVerticalEnabled ? 'app-shell app-shell-vertical-nav' : 'app-shell'}>
       <header className="top-shell">
         <div className="top-shell-row">
           <div className="brand-lockup">
@@ -422,6 +527,15 @@ function AppShell() {
       <main className="main-content shell-content">
         <Outlet />
       </main>
+      {transactionToast ? (
+        <div key={transactionToast.id} className="app-toast-stack" aria-live="polite" aria-atomic="true">
+          <div className="app-toast app-toast-success">
+            <span className="app-toast-kicker">Success</span>
+            <strong>{transactionToast.message}</strong>
+          </div>
+        </div>
+      ) : null}
+      <FinanceAssistant />
     </div>
   )
 }

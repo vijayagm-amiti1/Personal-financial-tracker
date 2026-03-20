@@ -16,19 +16,15 @@ public class AuthenticationCookieService {
     @Value("${app.auth.cookie_secure}")
     private boolean secureCookie;
 
-    @Value("${app.jwt.expiration_ms}")
-    private long jwtExpirationMs;
-
-    @Value("${app.jwt.refresh_expiration_ms}")
-    private long refreshExpirationMs;
+    @Value("${app.auth.cookie_same_site:Lax}")
+    private String sameSitePolicy;
 
     public ResponseCookie buildAuthCookie(String token) {
         return ResponseCookie.from(cookieName, token)
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(sameSitePolicy)
                 .path("/")
-                .maxAge(jwtExpirationMs / 1000)
                 .build();
     }
 
@@ -36,9 +32,8 @@ public class AuthenticationCookieService {
         return ResponseCookie.from(refreshCookieName, token)
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(sameSitePolicy)
                 .path("/")
-                .maxAge(refreshExpirationMs / 1000)
                 .build();
     }
 
@@ -46,7 +41,7 @@ public class AuthenticationCookieService {
         return ResponseCookie.from(cookieName, "")
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(sameSitePolicy)
                 .path("/")
                 .maxAge(0)
                 .build();
@@ -56,7 +51,17 @@ public class AuthenticationCookieService {
         return ResponseCookie.from(refreshCookieName, "")
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(sameSitePolicy)
+                .path("/")
+                .maxAge(0)
+                .build();
+    }
+
+    public ResponseCookie buildLogoutSessionCookie() {
+        return ResponseCookie.from("JSESSIONID", "")
+                .httpOnly(true)
+                .secure(secureCookie)
+                .sameSite(sameSitePolicy)
                 .path("/")
                 .maxAge(0)
                 .build();

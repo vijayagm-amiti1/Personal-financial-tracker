@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,6 +28,13 @@ public class GoalController {
 
     private final GoalService goalService;
     private final CurrentUserProvider currentUserProvider;
+
+    @GetMapping
+    public ResponseEntity<java.util.List<GoalResponse>> getGoals(Authentication authentication) {
+        UUID userId = currentUserProvider.getCurrentUserId(authentication);
+        log.info("Received get goals request for user {}", userId);
+        return ResponseEntity.ok(goalService.getGoalResponsesByUserId(userId));
+    }
 
     @PostMapping
     public ResponseEntity<GoalResponse> createGoal(@Valid @RequestBody GoalRequest request,

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
-import type { DevAccount, DevCategory, DevGoal, EndpointConfig } from '../types/report'
+import { loadEndpointConfig } from '../config/endpoints'
+import type { DevAccount, DevCategory, DevGoal } from '../types/report'
 import {
   getStoredAccounts,
   getStoredCategories,
@@ -31,16 +32,6 @@ async function extractErrorMessage(response: Response) {
   return null
 }
 
-async function loadEndpointConfig(): Promise<EndpointConfig> {
-  const response = await fetch('/endpoints.json')
-
-  if (!response.ok) {
-    throw new Error('Failed to load endpoint configuration.')
-  }
-
-  return response.json()
-}
-
 function mapAccount(item: unknown): DevAccount {
   const record = item as Record<string, unknown>
 
@@ -54,6 +45,21 @@ function mapAccount(item: unknown): DevAccount {
     currentBalance: Number(record.currentBalance ?? 0),
     isActive: record.isActive !== false,
     createdAt: record.createdAt ? String(record.createdAt) : undefined,
+  }
+}
+
+function mapGoal(item: unknown): DevGoal {
+  const record = item as Record<string, unknown>
+
+  return {
+    id: String(record.id),
+    userId: String(record.userId),
+    name: String(record.name ?? ''),
+    targetAmount: Number(record.targetAmount ?? 0),
+    currentAmount: Number(record.currentAmount ?? 0),
+    targetDate: String(record.targetDate ?? ''),
+    linkedAccountId: String(record.linkedAccountId ?? ''),
+    status: String(record.status ?? 'active'),
   }
 }
 
@@ -117,6 +123,30 @@ function useDevelopmentBootstrap() {
       accounts,
     }))
     return accounts
+  }
+
+  const refreshGoals = async () => {
+    const config = await loadEndpointConfig()
+    const goalPath = config.goals?.getAll?.path
+
+    if (!goalPath) {
+      return []
+    }
+
+    const response = await authFetch(new URL(goalPath, config.baseUrl).toString())
+
+    if (!response.ok) {
+      throw new Error((await extractErrorMessage(response)) ?? 'Failed to load goals.')
+    }
+
+    const goals = ((await response.json()) as unknown[]).map(mapGoal)
+    setStoredGoals(goals)
+    setState((currentState) => ({
+      ...currentState,
+      goals,
+    }))
+
+    return goals
   }
 
   const createCategory = async (payload: {
@@ -420,6 +450,7 @@ function useDevelopmentBootstrap() {
   useEffect(() => {
     void refreshAccounts().catch(() => undefined)
     void refreshCategories().catch(() => undefined)
+    void refreshGoals().catch(() => undefined)
   }, [])
 
   const activeAccounts = useMemo(
@@ -433,6 +464,7 @@ function useDevelopmentBootstrap() {
     activeAccounts,
     refreshAccounts,
     refreshCategories,
+    refreshGoals,
     createAccount,
     updateAccount,
     deactivateAccount,

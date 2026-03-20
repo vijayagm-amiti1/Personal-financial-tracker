@@ -11,14 +11,15 @@ import DashboardPage from '../pages/DashboardPage'
 import FaqPage from '../pages/FaqPage'
 import ForgotPasswordPage from '../pages/ForgotPasswordPage'
 import GoalCreatePage from '../pages/GoalCreatePage'
+import GoogleAuthCallbackPage from '../pages/GoogleAuthCallbackPage'
 import GoalsPage from '../pages/GoalsPage'
 import HelpPage from '../pages/HelpPage'
 import LoginPage from '../pages/LoginPage'
-import ModulePlaceholderPage from '../pages/ModulePlaceholderPage'
 import ReportIssuePage from '../pages/ReportIssuePage'
 import ReportsPage from '../pages/ReportsPage'
 import RecurringPage from '../pages/RecurringPage'
 import ResetPasswordPage from '../pages/ResetPasswordPage'
+import SettingsPage from '../pages/SettingsPage'
 import SignupPage from '../pages/SignupPage'
 import TransactionsPage from '../pages/TransactionsPage'
 import TransactionCreatePage from '../pages/TransactionCreatePage'
@@ -36,6 +37,7 @@ function AppRouter() {
             <Route path="/complete-signup" element={<CompleteSignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/auth/google/callback" element={<GoogleAuthCallbackPage />} />
           </Route>
 
           <Route element={<ProtectedRoute />}>
@@ -54,15 +56,7 @@ function AppRouter() {
               <Route path="faq" element={<FaqPage />} />
               <Route path="help" element={<HelpPage />} />
               <Route path="report-issue" element={<ReportIssuePage />} />
-              <Route
-                path="settings"
-                element={
-                  <ModulePlaceholderPage
-                    title="Settings"
-                    description="Profile, preferences, notification rules, and session controls will be configured here."
-                  />
-                }
-              />
+              <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>
         </Routes>

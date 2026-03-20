@@ -14,10 +14,12 @@ import com.example.financeTracker.Security.JwtService;
 import com.example.financeTracker.Service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -62,10 +64,17 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<AuthMessageResponse> logout() {
+    public ResponseEntity<AuthMessageResponse> logout(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        SecurityContextHolder.clearContext();
+
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookieService.buildLogoutCookie().toString())
                 .header(HttpHeaders.SET_COOKIE, cookieService.buildLogoutRefreshCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, cookieService.buildLogoutSessionCookie().toString())
                 .body(new AuthMessageResponse("Logged out successfully."));
     }
 

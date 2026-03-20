@@ -11,8 +11,10 @@ import com.example.financeTracker.Entity.User;
 import com.example.financeTracker.Repository.AccountRepository;
 import com.example.financeTracker.Repository.BudgetRepository;
 import com.example.financeTracker.Repository.CategoryRepository;
+import com.example.financeTracker.Repository.NotificationRepository;
 import com.example.financeTracker.Repository.TransactionRepository;
 import com.example.financeTracker.Repository.UserRepository;
+import com.example.financeTracker.Service.NotificationEmailService;
 import com.example.financeTracker.Service.NotificationService;
 import com.example.financeTracker.Service.TransactionService;
 import com.example.financeTracker.Exception.BadRequestException;
@@ -42,6 +44,8 @@ public class TransactionServiceImpl implements TransactionService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final NotificationEmailService notificationEmailService;
+    private final NotificationRepository notificationRepository;
 
     @Override
     @Transactional
@@ -406,7 +410,19 @@ public class TransactionServiceImpl implements TransactionService {
                     currentMoneySpent,
                     amount,
                     currentPercent.stripTrailingZeros().toPlainString());
+            boolean alreadyExists = notificationRepository.existsByUserIdAndTypeAndTitle(
+                    userId,
+                    NotificationType.BUDGET_WARNING,
+                    title);
             notificationService.createNotificationIfAbsent(userId, title, message, NotificationType.BUDGET_WARNING);
+            if (!alreadyExists) {
+                notificationEmailService.sendBudgetThresholdAlertIfEnabled(
+                        budget.getUser(),
+                        budget,
+                        currentMoneySpent,
+                        thresholdPercent,
+                        currentPercent);
+            }
         }
 
         if (currentPercent.compareTo(BigDecimal.valueOf(100)) >= 0) {
@@ -418,7 +434,18 @@ public class TransactionServiceImpl implements TransactionService {
                     periodLabel,
                     currentMoneySpent,
                     amount);
+            boolean alreadyExists = notificationRepository.existsByUserIdAndTypeAndTitle(
+                    userId,
+                    NotificationType.BUDGET_WARNING,
+                    title);
             notificationService.createNotificationIfAbsent(userId, title, message, NotificationType.BUDGET_WARNING);
+            if (!alreadyExists) {
+                notificationEmailService.sendBudgetExceededAlertIfEnabled(
+                        budget.getUser(),
+                        budget,
+                        currentMoneySpent,
+                        currentPercent);
+            }
         }
     }
 

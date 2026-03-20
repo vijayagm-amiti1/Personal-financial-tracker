@@ -14,9 +14,11 @@ import com.example.financeTracker.Exception.ResourceNotFoundException;
 import com.example.financeTracker.Repository.AccountRepository;
 import com.example.financeTracker.Repository.CategoryRepository;
 import com.example.financeTracker.Repository.GoalRepository;
+import com.example.financeTracker.Repository.NotificationRepository;
 import com.example.financeTracker.Repository.TransactionRepository;
 import com.example.financeTracker.Repository.UserRepository;
 import com.example.financeTracker.Service.GoalService;
+import com.example.financeTracker.Service.NotificationEmailService;
 import com.example.financeTracker.Service.NotificationService;
 import java.time.LocalDate;
 import java.util.List;
@@ -42,6 +44,15 @@ public class GoalServiceImpl implements GoalService {
     private final TransactionRepository transactionRepository;
     private final CategoryRepository categoryRepository;
     private final NotificationService notificationService;
+    private final NotificationEmailService notificationEmailService;
+    private final NotificationRepository notificationRepository;
+
+    @Override
+    public List<GoalResponse> getGoalResponsesByUserId(UUID userId) {
+        return goalRepository.findAllByUserId(userId).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
 
     @Override
     @Transactional
@@ -102,11 +113,25 @@ public class GoalServiceImpl implements GoalService {
         transactionRepository.save(buildGoalContributionTransaction(goal, sourceAccount, request.getAmount()));
         Goal updatedGoal = goalRepository.save(goal);
         if (wasBelowTarget && updatedGoal.getCurrentAmount().compareTo(updatedGoal.getTargetAmount()) >= 0) {
+            String title = "Goal reached: " + updatedGoal.getName();
+            String message = String.format("%s reached its target amount of %s.", updatedGoal.getName(), updatedGoal.getTargetAmount());
+            boolean alreadyExists = notificationRepository.existsByUserIdAndTypeAndTitle(
+                    userId,
+                    NotificationType.GOAL_REACHED,
+                    title);
             notificationService.createNotificationIfAbsent(
                     userId,
-                    "Goal reached: " + updatedGoal.getName(),
-                    String.format("%s reached its target amount of %s.", updatedGoal.getName(), updatedGoal.getTargetAmount()),
+                    title,
+                    message,
                     NotificationType.GOAL_REACHED);
+            if (!alreadyExists) {
+                boolean completedBeforeTargetDate = updatedGoal.getTargetDate() == null
+                        || !LocalDate.now().isAfter(updatedGoal.getTargetDate());
+                notificationEmailService.sendGoalReachedIfEnabled(
+                        updatedGoal.getUser(),
+                        updatedGoal,
+                        completedBeforeTargetDate);
+            }
         }
         log.info("Contributed {} to goal {} for user {}", request.getAmount(), request.getGoalId(), userId);
         return mapToResponse(updatedGoal);

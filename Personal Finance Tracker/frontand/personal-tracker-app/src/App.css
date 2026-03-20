@@ -2,6 +2,10 @@
   min-height: 100vh;
 }
 
+.app-shell-vertical-nav {
+  display: block;
+}
+
 .top-shell {
   position: sticky;
   top: 0;
@@ -143,6 +147,51 @@
 
 .notification-panel-open {
   display: block;
+}
+
+.app-toast-stack {
+  position: fixed;
+  right: 24px;
+  bottom: 96px;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.app-toast {
+  min-width: min(320px, calc(100vw - 32px));
+  padding: 14px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(31, 71, 44, 0.16);
+  background: linear-gradient(135deg, rgba(16, 38, 76, 0.97) 0%, rgba(15, 159, 100, 0.94) 100%);
+  color: #f8fafc;
+  box-shadow: 0 22px 48px rgba(15, 34, 66, 0.26);
+  display: grid;
+  gap: 4px;
+  animation: toast-slide-in 0.28s ease;
+}
+
+.app-toast-kicker {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.app-toast strong {
+  font-size: 1rem;
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .notification-panel-header {
@@ -399,6 +448,65 @@
   margin: 0 auto;
 }
 
+@media (min-width: 861px) {
+  .app-shell-vertical-nav {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+
+  .app-shell-vertical-nav .top-shell {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    min-height: 100vh;
+    padding: 24px 18px;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 0;
+  }
+
+  .app-shell-vertical-nav .top-shell-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .app-shell-vertical-nav .brand-lockup {
+    align-items: flex-start;
+  }
+
+  .app-shell-vertical-nav .utility-bar-desktop,
+  .app-shell-vertical-nav .primary-nav-desktop {
+    display: grid;
+    width: 100%;
+  }
+
+  .app-shell-vertical-nav .utility-bar-desktop {
+    justify-content: stretch;
+  }
+
+  .app-shell-vertical-nav .utility-button,
+  .app-shell-vertical-nav .utility-icon-button,
+  .app-shell-vertical-nav .profile-chip,
+  .app-shell-vertical-nav .profile-menu-anchor,
+  .app-shell-vertical-nav .notification-anchor {
+    width: 100%;
+  }
+
+  .app-shell-vertical-nav .primary-nav-desktop {
+    margin-top: 18px;
+    gap: 10px;
+  }
+
+  .app-shell-vertical-nav .primary-nav-desktop .nav-link {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .app-shell-vertical-nav .shell-content {
+    max-width: none;
+    margin: 0;
+  }
+}
+
 .page {
   display: grid;
   gap: 24px;
@@ -513,6 +621,214 @@
   background: #eefbf4;
   border: 1px solid #c4ebd0;
   color: #14653d;
+}
+
+.settings-form {
+  gap: 20px;
+}
+
+.settings-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.settings-toggle-list {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-toggle-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  border: 1px solid #d7dfeb;
+  background: #f8fbff;
+}
+
+.settings-toggle-card strong,
+.settings-toggle-card p {
+  margin: 0;
+}
+
+.settings-toggle-card p {
+  margin-top: 6px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.settings-switch {
+  position: relative;
+  width: 116px;
+  height: 64px;
+  flex: 0 0 auto;
+  border: 3px solid #d6deea;
+  border-radius: 999px;
+  background: #eef3f9;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-switch:hover {
+  box-shadow: 0 10px 24px rgba(20, 43, 81, 0.12);
+}
+
+.settings-switch-enabled {
+  background: #76c043;
+  border-color: #d6deea;
+}
+
+.settings-switch-icon {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #2d6e19;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.settings-switch-thumb {
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+  transition: transform 0.2s ease;
+}
+
+.settings-switch-enabled .settings-switch-thumb {
+  transform: translateX(52px);
+}
+
+.settings-category-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.settings-category-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #f8fbff;
+  border: 1px solid #d7dfeb;
+}
+
+.settings-category-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: #eef4fb;
+  border: 1px solid #d7dfeb;
+}
+
+.settings-category-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-category-meta strong,
+.settings-category-meta span {
+  margin: 0;
+}
+
+.settings-category-meta span {
+  color: #64748b;
+  text-transform: capitalize;
+}
+
+.chatbot-shell {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
+}
+
+.chatbot-launcher {
+  display: inline-grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1153c2 0%, #19a0ff 100%);
+  color: #ffffff;
+  box-shadow: 0 18px 36px rgba(17, 83, 194, 0.28);
+  cursor: pointer;
+}
+
+.chatbot-panel {
+  position: absolute;
+  right: 0;
+  bottom: 72px;
+  width: min(380px, calc(100vw - 32px));
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.chatbot-panel-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.chatbot-panel .react-chatbot-kit-chat-container {
+  width: 100%;
+  font-family: inherit;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(20, 43, 81, 0.22);
+}
+
+.chatbot-panel .react-chatbot-kit-chat-inner-container {
+  width: 100%;
+  height: 520px;
+  background: #f8fbff;
+}
+
+.chatbot-custom-header {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 0 18px;
+  background: #10264c;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.chatbot-option-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chatbot-option-button {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #c7d4e5;
+  background: #ffffff;
+  color: #183050;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chatbot-option-button:hover {
+  border-color: #4f83d1;
+  background: #eef5ff;
 }
 
 .summary-grid {
@@ -710,6 +1026,62 @@
 
 .auth-footnote {
   color: #53667f;
+}
+
+.auth-divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7b8ca3;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.auth-divider::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 1px;
+  background: #d8e2ef;
+}
+
+.auth-divider span {
+  position: relative;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.auth-google-button {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-weight: 700;
+}
+
+.auth-google-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.auth-google-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+.auth-google-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .chart-legend {
@@ -1103,6 +1475,51 @@
   border-top: 1px solid #e4ebf5;
 }
 
+.transaction-detail-card {
+  width: min(820px, 100%);
+}
+
+.transaction-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.transaction-detail-stack {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.transaction-detail-panel {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid #dbe5f2;
+  background: linear-gradient(180deg, #fbfdff 0%, #f3f7fc 100%);
+}
+
+.transaction-detail-panel span {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.transaction-detail-panel strong {
+  color: #10264c;
+  font-size: 1rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.transaction-detail-id {
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.94rem;
+}
+
 .icon-picker-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1275,6 +1692,7 @@
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(135deg, #1153c2 0%, #19a0ff 100%);
+  box-shadow: 0 8px 18px rgba(25, 160, 255, 0.22);
 }
 
 .budget-scale-row {

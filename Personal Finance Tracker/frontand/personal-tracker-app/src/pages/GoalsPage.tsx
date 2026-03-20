@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import confetti from 'canvas-confetti'
 import { useNavigate } from 'react-router-dom'
 import GoalContributionPanel from '../components/goals/GoalContributionPanel'
 import GoalsList from '../components/goals/GoalsList'
@@ -55,11 +56,21 @@ function GoalsPage() {
   const handleContribution = async (values: GoalContributionValues) => {
     try {
       setActionError(null)
-      await contributeToGoal({
+      const previousGoal = goals.find((goal) => goal.id === values.goalId) ?? null
+      const updatedGoal = await contributeToGoal({
         goalId: values.goalId,
         accountId: values.accountId,
         amount: Number(values.amount),
       })
+      if (previousGoal?.status !== 'completed' && updatedGoal.status === 'completed') {
+        void confetti({
+          particleCount: 140,
+          spread: 78,
+          startVelocity: 32,
+          origin: { y: 0.62 },
+          colors: ['#1f9d55', '#22c55e', '#f59e0b', '#f8fafc'],
+        })
+      }
       setSelectedGoal(null)
     } catch (caughtError) {
       setActionError(caughtError instanceof Error ? caughtError.message : 'Goal contribution failed.')

@@ -20,7 +20,7 @@ public class AuthUserPrincipal implements UserDetails {
     public AuthUserPrincipal(User user) {
         this.id = user.getId();
         this.email = user.getEmail();
-        this.password = user.getPasswordHash();
+        this.password = user.getPasswordHash() == null ? "" : user.getPasswordHash();
         this.active = Boolean.TRUE.equals(user.getIsActive());
     }
 

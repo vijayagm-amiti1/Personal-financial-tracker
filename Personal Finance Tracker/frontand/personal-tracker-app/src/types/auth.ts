@@ -4,6 +4,19 @@ export type AuthUser = {
   displayName: string
 }
 
+export type UserSettings = {
+  email: string
+  displayName: string
+  allowSendEmailNotification: boolean
+  allowBudgetThresholdAlert: boolean
+  allowBudgetExceededAlert: boolean
+  allowGoalNotification: boolean
+  allowGoalCompletionBeforeTargetDateNotification: boolean
+  allowGoalMissedTargetDateNotification: boolean
+  allowMonthlyBudgetReport: boolean
+  navbarVerticalEnabled: boolean
+}
+
 export type RegisterPayload = {
   email: string
   displayName: string
