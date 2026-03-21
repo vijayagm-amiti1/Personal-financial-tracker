@@ -23,16 +23,16 @@ jobs:
           cache: 'maven'
 
       - name: Build with Maven
-        # FIX: Added working directory so it finds your pom.xml
-        working-directory: backand/financeTracker
+        # Path fixed to include the space-named folder
+        working-directory: "Personal Finance Tracker/backand/financeTracker"
         run: mvn clean install -DskipTests
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          # FIX: Points to the specific target folder in your subfolder
-          path: backand/financeTracker/target/*.jar
+          # Path fixed to include the space-named folder
+          path: "Personal Finance Tracker/backand/financeTracker/target/*.jar"
 
   deploy:
     runs-on: ubuntu-latest
@@ -52,6 +52,5 @@ jobs:
         with:
           app-name: 'finance-backand'
           slot-name: 'Production'
-          # FIX: Simplified login using the Publish Profile secret
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: '*.jar'
