@@ -23,7 +23,6 @@ jobs:
           cache: 'maven'
 
       - name: Build with Maven
-        # Path fixed to include the space-named folder
         working-directory: "Personal Finance Tracker/backand/financeTracker"
         run: mvn clean install -DskipTests
 
@@ -31,7 +30,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          # Path fixed to include the space-named folder
           path: "Personal Finance Tracker/backand/financeTracker/target/*.jar"
 
   deploy:
@@ -39,7 +37,8 @@ jobs:
     needs: build
     permissions:
       contents: read
-  
+    
+    # FIX: 'steps' must be aligned with 'permissions' and 'needs'
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
