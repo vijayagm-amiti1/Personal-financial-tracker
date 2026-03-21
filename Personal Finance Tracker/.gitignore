@@ -15,5 +15,5 @@ dist/
 build/
 target/
 
-application-prod.properties
+
 application.properties
