@@ -22,6 +22,12 @@ jobs:
       - name: npm install, build, and test
         # Corrected path to find your package.json
         working-directory: "Personal Finance Tracker/frontand/personal-tracker-app"
+        
+        # INJECTING BOTH VARIABLES HERE
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_APP_BASE_URL: ${{ vars.VITE_APP_BASE_URL }}
+          
         run: |
           npm install
           npm run build --if-present
@@ -58,5 +64,4 @@ jobs:
         with:
           app-name: 'finance-frontand'
           slot-name: 'Production'
-          # Deploy the contents of the 'dist' folder we downloaded
           package: .
