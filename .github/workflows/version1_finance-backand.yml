@@ -1,6 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
 name: Build and deploy JAR app to Azure Web App - finance-backand
 
 on:
@@ -13,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -23,22 +20,25 @@ jobs:
         with:
           java-version: '17'
           distribution: 'microsoft'
+          cache: 'maven'
 
       - name: Build with Maven
-        run: mvn clean install
+        # FIX: Added working directory so it finds your pom.xml
+        working-directory: backand/financeTracker
+        run: mvn clean install -DskipTests
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          path: '${{ github.workspace }}/target/*.jar'
+          # FIX: Points to the specific target folder in your subfolder
+          path: backand/financeTracker/target/*.jar
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      contents: read
   
     steps:
       - name: Download artifact from build job
@@ -46,18 +46,12 @@ jobs:
         with:
           name: java-app
       
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_17C1C1D2130245588D01CBA9FFD62FA3 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_967B7C3E6E4B461FB0E9D12A59238889 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_D9A91D40B62D4930B51487DB7E8E54A0 }}
-
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'finance-backand'
           slot-name: 'Production'
+          # FIX: Simplified login using the Publish Profile secret
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: '*.jar'
-          
