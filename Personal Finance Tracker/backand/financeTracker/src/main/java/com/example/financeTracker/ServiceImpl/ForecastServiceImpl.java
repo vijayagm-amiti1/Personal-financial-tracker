@@ -36,7 +36,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class ForecastServiceImpl implements ForecastService {
 
     private static final int LOOKBACK_MONTHS = 3;
-    private static final BigDecimal NEW_USER_FALLBACK_DAILY_EXPENSE = new BigDecimal("5000.00");
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
@@ -224,11 +223,6 @@ public class ForecastServiceImpl implements ForecastService {
     }
 
     private BigDecimal calculateAverageDailyExpense(UUID userId, User user, LocalDate today) {
-        long userAgeInDays = ChronoUnit.DAYS.between(user.getCreatedAt().toLocalDate(), today) + 1;
-        if (userAgeInDays <= 7) {
-            return NEW_USER_FALLBACK_DAILY_EXPENSE;
-        }
-
         LocalDate observedEnd = today.minusDays(1);
         if (observedEnd.isBefore(user.getCreatedAt().toLocalDate())) {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
