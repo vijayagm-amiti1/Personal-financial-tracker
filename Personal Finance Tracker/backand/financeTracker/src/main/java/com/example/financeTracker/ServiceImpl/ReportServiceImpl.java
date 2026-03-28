@@ -57,64 +57,98 @@ public class ReportServiceImpl implements ReportService {
 
         userRepository.existsById(userId);
         accountSharingService.requireAccessibleAccount(accountId, userId);
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow();
+
+        LocalDate accountStartDate = account.getCreatedAt() == null
+                ? startDate
+                : account.getCreatedAt().toLocalDate();
+        LocalDate transactionStartDate = accountStartDate.isBefore(startDate) ? accountStartDate : startDate;
 
         List<Transaction> transactions = transactionRepository
-                .findAllAccessibleByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(userId, startDate, endDate);
+                .findAllAccessibleByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
+                        userId,
+                        transactionStartDate,
+                        endDate);
 
-        Map<Integer, double[]> dailyTotals = new LinkedHashMap<>();
+        Map<Integer, BigDecimal[]> dailyTotals = new LinkedHashMap<>();
         for (int day = 1; day <= yearMonth.lengthOfMonth(); day++) {
-            dailyTotals.put(day, new double[]{0.0, 0.0});
+            dailyTotals.put(day, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
         }
 
-        for (Transaction transaction : transactions) {
-            int day = transaction.getTransactionDate().getDayOfMonth();
-            double[] totals = dailyTotals.get(day);
-            double amount = transaction.getAmount().doubleValue();
+        BigDecimal runningBalance = account.getOpeningBalance() == null
+                ? BigDecimal.ZERO
+                : account.getOpeningBalance();
 
-            if ("income".equalsIgnoreCase(transaction.getType())
-                    && transaction.getAccount() != null
-                    && accountId.equals(transaction.getAccount().getId())) {
-                totals[0] += amount;
-            } else if ("expense".equalsIgnoreCase(transaction.getType())
-                    && transaction.getAccount() != null
-                    && accountId.equals(transaction.getAccount().getId())) {
-                totals[1] += amount;
-            } else if ("goal_contribution".equalsIgnoreCase(transaction.getType())) {
-                if (transaction.getAccount() != null
-                        && accountId.equals(transaction.getAccount().getId())
-                        && transaction.getToAccount() != null
-                        && !accountId.equals(transaction.getToAccount().getId())) {
-                    totals[1] += amount;
+        LocalDate cursor = transactionStartDate;
+        while (!cursor.isAfter(endDate)) {
+            BigDecimal dailyIncome = BigDecimal.ZERO;
+            BigDecimal dailyExpense = BigDecimal.ZERO;
+
+            for (Transaction transaction : transactions) {
+                if (!transaction.getTransactionDate().isEqual(cursor)) {
+                    continue;
                 }
-                if (transaction.getToAccount() != null
-                        && accountId.equals(transaction.getToAccount().getId())
-                        && transaction.getAccount() != null
-                        && !accountId.equals(transaction.getAccount().getId())) {
-                    totals[0] += amount;
-                }
-            } else if ("transfer".equalsIgnoreCase(transaction.getType())) {
-                if (transaction.getAccount() != null && accountId.equals(transaction.getAccount().getId())) {
-                    totals[1] += amount;
-                }
-                if (transaction.getToAccount() != null && accountId.equals(transaction.getToAccount().getId())) {
-                    totals[0] += amount;
+
+                BigDecimal signedAmount = calculateSignedAmountForAccount(transaction, accountId);
+                if (signedAmount.signum() > 0) {
+                    dailyIncome = dailyIncome.add(signedAmount);
+                } else if (signedAmount.signum() < 0) {
+                    dailyExpense = dailyExpense.add(signedAmount.abs());
                 }
             }
+
+            runningBalance = runningBalance.add(dailyIncome).subtract(dailyExpense);
+
+            if (!cursor.isBefore(startDate)) {
+                BigDecimal[] totals = dailyTotals.get(cursor.getDayOfMonth());
+                totals[0] = dailyIncome;
+                totals[1] = dailyExpense;
+                totals[2] = runningBalance;
+            }
+
+            cursor = cursor.plusDays(1);
         }
 
         List<DailyReportDTO> response = new ArrayList<>();
-        for (Map.Entry<Integer, double[]> entry : dailyTotals.entrySet()) {
+        for (Map.Entry<Integer, BigDecimal[]> entry : dailyTotals.entrySet()) {
             response.add(new DailyReportDTO(
                     entry.getKey(),
                     accountId,
-                    entry.getValue()[0],
-                    entry.getValue()[1]
+                    entry.getValue()[0].doubleValue(),
+                    entry.getValue()[1].doubleValue(),
+                    entry.getValue()[2].doubleValue()
             ));
         }
 
         log.info("Generated monthly daily report for user {}, account {}, month {}, year {}",
                 userId, accountId, month, year);
         return response;
+    }
+
+    private BigDecimal calculateSignedAmountForAccount(Transaction transaction, UUID accountId) {
+        if ("income".equalsIgnoreCase(transaction.getType())
+                && transaction.getAccount() != null
+                && accountId.equals(transaction.getAccount().getId())) {
+            return transaction.getAmount();
+        }
+
+        if ("expense".equalsIgnoreCase(transaction.getType())
+                && transaction.getAccount() != null
+                && accountId.equals(transaction.getAccount().getId())) {
+            return transaction.getAmount().negate();
+        }
+
+        if ("transfer".equalsIgnoreCase(transaction.getType()) || "goal_contribution".equalsIgnoreCase(transaction.getType())) {
+            if (transaction.getAccount() != null && accountId.equals(transaction.getAccount().getId())) {
+                return transaction.getAmount().negate();
+            }
+            if (transaction.getToAccount() != null && accountId.equals(transaction.getToAccount().getId())) {
+                return transaction.getAmount();
+            }
+        }
+
+        return BigDecimal.ZERO;
     }
 
     @Override

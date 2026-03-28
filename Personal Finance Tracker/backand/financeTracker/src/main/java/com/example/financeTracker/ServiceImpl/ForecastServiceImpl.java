@@ -223,7 +223,7 @@ public class ForecastServiceImpl implements ForecastService {
     }
 
     private BigDecimal calculateAverageDailyExpense(UUID userId, User user, LocalDate today) {
-        LocalDate observedEnd = today.minusDays(1);
+        LocalDate observedEnd = today;
         if (observedEnd.isBefore(user.getCreatedAt().toLocalDate())) {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }

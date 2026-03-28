@@ -6,15 +6,11 @@ type IncomeExpenseLineChartProps = {
   type: 'all' | 'income' | 'expense'
 }
 
-type BalancePoint = DailyReport & {
-  balance: number
-}
-
 const CHART_WIDTH = 720
 const CHART_HEIGHT = 280
 const PADDING = { top: 20, right: 18, bottom: 34, left: 44 }
 
-function buildLinePath<T extends DailyReport | BalancePoint>(
+function buildLinePath<T extends DailyReport>(
   items: T[],
   valueSelector: (item: T) => number,
   minValue: number,
@@ -54,19 +50,6 @@ function formatCurrency(value: number) {
   }).format(Math.abs(value))
 }
 
-function buildBalanceSeries(items: DailyReport[]): BalancePoint[] {
-  let runningBalance = 0
-
-  return items.map((item) => {
-    runningBalance += item.income - item.expense
-
-    return {
-      ...item,
-      balance: runningBalance,
-    }
-  })
-}
-
 function IncomeExpenseLineChart({
   items,
   isLoading,
@@ -80,13 +63,12 @@ function IncomeExpenseLineChart({
     return <div className="empty-state">No chart data available for the selected month.</div>
   }
 
-  const balanceSeries = buildBalanceSeries(items)
-  const hasNegativeBalance = balanceSeries.some((item) => item.balance < 0)
+  const hasNegativeBalance = items.some((item) => item.balance < 0)
   const minValue = hasNegativeBalance
-    ? Math.min(0, ...balanceSeries.map((item) => item.balance))
+    ? Math.min(0, ...items.map((item) => item.balance))
     : 0
   const maxValue = Math.max(
-    ...balanceSeries.flatMap((item) => [item.income, item.expense, item.balance]),
+    ...items.flatMap((item) => [item.income, item.expense, item.balance]),
     1,
   )
   const innerWidth = CHART_WIDTH - PADDING.left - PADDING.right
@@ -101,7 +83,7 @@ function IncomeExpenseLineChart({
   const incomePath = buildLinePath(items, (item) => item.income, minValue, maxValue)
   const expensePath = buildLinePath(items, (item) => item.expense, minValue, maxValue)
   const balancePath = buildLinePath(
-    balanceSeries,
+    items,
     (item) => item.balance,
     minValue,
     maxValue,
@@ -207,7 +189,7 @@ function IncomeExpenseLineChart({
             (items.length === 1 ? innerWidth / 2 : (index / (items.length - 1)) * innerWidth)
           const incomeY = getYCoordinate(item.income, minValue, valueRange)
           const expenseY = getYCoordinate(item.expense, minValue, valueRange)
-          const balanceY = getYCoordinate(balanceSeries[index].balance, minValue, valueRange)
+          const balanceY = getYCoordinate(item.balance, minValue, valueRange)
 
           return (
             <g key={`point-${item.accountId}-${item.day}`}>
@@ -223,7 +205,7 @@ function IncomeExpenseLineChart({
               ) : null}
               {type === 'all' ? (
                 <circle cx={x} cy={balanceY} r={4} className="chart-point chart-point-balance">
-                  <title>{`Day ${item.day}: Current balance ${formatCurrency(balanceSeries[index].balance)}`}</title>
+                  <title>{`Day ${item.day}: Current balance ${formatCurrency(item.balance)}`}</title>
                 </circle>
               ) : null}
             </g>

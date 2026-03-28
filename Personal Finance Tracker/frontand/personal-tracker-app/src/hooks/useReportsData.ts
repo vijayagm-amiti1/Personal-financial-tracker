@@ -52,6 +52,7 @@ function mergeDailyReports(items: DailyReport[]) {
     if (existing) {
       existing.income += item.income
       existing.expense += item.expense
+      existing.balance += item.balance
       return
     }
 
@@ -60,6 +61,7 @@ function mergeDailyReports(items: DailyReport[]) {
       accountId: ALL_ACCOUNTS_VALUE,
       income: item.income,
       expense: item.expense,
+      balance: item.balance,
     })
   })
 

@@ -6,6 +6,7 @@ public record DailyReportDTO(
         int day,
         UUID accountId,
         double income,
-        double expense
+        double expense,
+        double balance
 ) {
 }

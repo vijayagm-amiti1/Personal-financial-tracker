@@ -86,6 +86,7 @@ export type DailyReport = {
   accountId: string
   income: number
   expense: number
+  balance: number
 }
 
 export type CategorySpendingReport = {
