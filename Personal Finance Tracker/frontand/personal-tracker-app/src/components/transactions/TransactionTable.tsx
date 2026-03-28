@@ -15,6 +15,8 @@ type TransactionTableProps = {
   onDelete: (transactionId: string) => Promise<void>
 }
 
+const editableRoles = new Set<NonNullable<DevAccount['accessRole']>>(['OWNER', 'EDITOR'])
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -39,9 +41,26 @@ function TransactionTable({
   onEdit,
   onDelete,
 }: TransactionTableProps) {
+  const accountRecords = new Map(accounts.map((account) => [account.id, account]))
   const accountMap = new Map(accounts.map((account) => [account.id, account.name]))
   const categoryMap = new Map(categories.map((category) => [category.id, category.name]))
-  const canModifyTransaction = (type: TransactionRecord['type']) => type !== 'goal_contribution'
+  const canManageSharedAccount = (accountId: string | null) => {
+    if (!accountId) {
+      return true
+    }
+
+    const account = accountRecords.get(accountId)
+    const role = account?.accessRole ?? 'OWNER'
+    return editableRoles.has(role)
+  }
+
+  const canModifyTransaction = (transaction: TransactionRecord) => {
+    if (transaction.type === 'goal_contribution') {
+      return false
+    }
+
+    return canManageSharedAccount(transaction.accountId) && canManageSharedAccount(transaction.toAccountId)
+  }
 
   if (isLoading) {
     return <div className="empty-state">Loading transactions...</div>
@@ -108,6 +127,10 @@ function TransactionTable({
                 <td>{formatCurrency(transaction.amount)}</td>
                 <td>{transaction.note ?? '-'}</td>
                 <td>
+                  {(() => {
+                    const canManage = canModifyTransaction(transaction)
+
+                    return (
                   <div className="table-actions">
                     <button
                       type="button"
@@ -120,7 +143,7 @@ function TransactionTable({
                       type="button"
                       className="table-action-button"
                       onClick={() => onEdit(transaction)}
-                      disabled={!canModifyTransaction(transaction.type)}
+                      style={{ display: canManage ? undefined : 'none' }}
                     >
                       Edit
                     </button>
@@ -128,13 +151,18 @@ function TransactionTable({
                       type="button"
                       className="table-action-button table-action-danger"
                       onClick={() => void onDelete(transaction.id)}
-                      disabled={!canModifyTransaction(transaction.type)}
+                      style={{ display: canManage ? undefined : 'none' }}
                     >
                       Delete
                     </button>
                   </div>
-                  {!canModifyTransaction(transaction.type) ? (
+                    )
+                  })()}
+                  {transaction.type === 'goal_contribution' ? (
                     <div className="transaction-table-note">Manage from goals only</div>
+                  ) : null}
+                  {transaction.type !== 'goal_contribution' && !canModifyTransaction(transaction) ? (
+                    <div className="transaction-table-note">View only access</div>
                   ) : null}
                 </td>
               </tr>

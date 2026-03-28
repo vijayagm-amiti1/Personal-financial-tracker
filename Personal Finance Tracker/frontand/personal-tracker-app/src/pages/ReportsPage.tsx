@@ -65,12 +65,14 @@ function ReportsPage() {
         </p>
       </header>
 
-      <FilterBar
-        filters={filters}
-        accounts={activeAccounts}
-        onChange={setFilters}
-        onReload={reload}
-      />
+      <div data-tour="reports-filter-bar">
+        <FilterBar
+          filters={filters}
+          accounts={activeAccounts}
+          onChange={setFilters}
+          onReload={reload}
+        />
+      </div>
 
       {error ? (
         <div className="report-error" role="alert">
@@ -79,7 +81,7 @@ function ReportsPage() {
         </div>
       ) : null}
 
-      <div className="summary-grid">
+      <div className="summary-grid" data-tour="reports-summary-cards">
         <SummaryCard
           title="Monthly income"
           value={totals.income}
@@ -107,30 +109,36 @@ function ReportsPage() {
         />
       </div>
 
-      <ReportPanel
-        title="Daily income vs expense"
-        subtitle="Each day in the selected month for the chosen account."
-      >
-        <IncomeExpenseLineChart
-          items={dailyReport}
-          isLoading={isLoading}
-          type={filters.type}
-        />
-      </ReportPanel>
+      <div data-tour="reports-income-expense-chart">
+        <ReportPanel
+          title="Daily income vs expense"
+          subtitle="Each day in the selected month for the chosen account."
+        >
+          <IncomeExpenseLineChart
+            items={dailyReport}
+            isLoading={isLoading}
+            type={filters.type}
+          />
+        </ReportPanel>
+      </div>
 
-      <ReportPanel
-        title="Category spending"
-        subtitle="Expense-only breakdown for the same filters."
-      >
-        <CategorySpendingPieChart items={categorySpendingReport} isLoading={isLoading} />
-      </ReportPanel>
+      <div data-tour="reports-category-spending">
+        <ReportPanel
+          title="Category spending"
+          subtitle="Expense-only breakdown for the same filters."
+        >
+          <CategorySpendingPieChart items={categorySpendingReport} isLoading={isLoading} />
+        </ReportPanel>
+      </div>
 
-      <ReportPanel
-        title="Daily report table"
-        subtitle="Structured view for quick manual verification while testing."
-      >
-        <DailyReportTable items={dailyReport} isLoading={isLoading} />
-      </ReportPanel>
+      <div data-tour="reports-daily-table">
+        <ReportPanel
+          title="Daily report table"
+          subtitle="Structured view for quick manual verification while testing."
+        >
+          <DailyReportTable items={dailyReport} isLoading={isLoading} />
+        </ReportPanel>
+      </div>
     </section>
   )
 }

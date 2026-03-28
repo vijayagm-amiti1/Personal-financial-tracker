@@ -17,4 +17,12 @@ public interface AuthMailService {
     void sendBudgetExceededAlertEmail(String toEmail, String displayName, String categoryName, String periodLabel, String spentAmount, String budgetAmount, String percentUsed);
 
     void sendGoalReachedEmail(String toEmail, String displayName, String goalName, String targetAmount, String completedAmount, String targetDate, boolean completedBeforeTargetDate);
+
+    void sendAccountInviteEmail(String toEmail,
+                                String recipientName,
+                                String inviterName,
+                                String accountName,
+                                String role,
+                                String inviteLink,
+                                String expiresAt);
 }

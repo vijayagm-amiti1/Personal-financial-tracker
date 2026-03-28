@@ -12,6 +12,7 @@ import {
 } from '../utils/appEvents'
 import { authFetch } from '../utils/authFetch'
 import { API_BASE_URL } from '../config/env'
+import { productTourSteps } from '../tour/productTour'
 
 const navigationItems = [
   { label: 'Dashboard', to: '/dashboard' },
@@ -19,6 +20,8 @@ const navigationItems = [
   { label: 'Budgets', to: '/budgets' },
   { label: 'Goals', to: '/goals' },
   { label: 'Reports', to: '/reports' },
+  { label: 'Insights', to: '/insights' },
+  { label: 'Rules', to: '/rules' },
   { label: 'Recurring', to: '/recurring' },
   { label: 'Accounts', to: '/accounts' },
   { label: 'Settings', to: '/settings' },
@@ -37,6 +40,14 @@ type NotificationMenuProps = {
 type ProfileMenuProps = {
   profileName: string
   onLogout: () => Promise<void>
+  onStartProductTour: () => void
+}
+
+type TourRect = {
+  top: number
+  left: number
+  width: number
+  height: number
 }
 
 type ToastState = {
@@ -244,7 +255,7 @@ function NotificationMenu({
   )
 }
 
-function ProfileMenu({ profileName, onLogout }: ProfileMenuProps) {
+function ProfileMenu({ profileName, onLogout, onStartProductTour }: ProfileMenuProps) {
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -287,6 +298,16 @@ function ProfileMenu({ profileName, onLogout }: ProfileMenuProps) {
         <button type="button" className="profile-menu-item" onClick={() => handleNavigate('/faq')}>
           FAQ
         </button>
+        <button
+          type="button"
+          className="profile-menu-item"
+          onClick={() => {
+            setIsOpen(false)
+            onStartProductTour()
+          }}
+        >
+          Product Tour
+        </button>
         <button type="button" className="profile-menu-item" onClick={() => handleNavigate('/settings')}>
           Settings
         </button>
@@ -313,11 +334,15 @@ function ProfileMenu({ profileName, onLogout }: ProfileMenuProps) {
 
 function AppShell() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { user, logout } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [profileName, setProfileName] = useState(() => user?.displayName ?? '')
   const [navbarVerticalEnabled, setNavbarVerticalEnabled] = useState(false)
   const [transactionToast, setTransactionToast] = useState<ToastState | null>(null)
+  const [isTourActive, setIsTourActive] = useState(false)
+  const [tourIndex, setTourIndex] = useState(0)
+  const [tourTargetRect, setTourTargetRect] = useState<TourRect | null>(null)
   const {
     notifications,
     unreadCount,
@@ -420,6 +445,116 @@ function AppShell() {
     }
   }, [])
 
+  const currentTourStep = isTourActive ? productTourSteps[tourIndex] : null
+
+  useEffect(() => {
+    if (!isTourActive || !currentTourStep) {
+      setTourTargetRect(null)
+      return
+    }
+
+    if (location.pathname !== currentTourStep.route) {
+      navigate(currentTourStep.route)
+      return
+    }
+
+    let isCancelled = false
+    let attempts = 0
+
+    const updateRect = () => {
+      const target = document.querySelector(currentTourStep.selector) as HTMLElement | null
+      if (!target) {
+        if (attempts < 20) {
+          attempts += 1
+          window.setTimeout(updateRect, 120)
+        } else if (!isCancelled) {
+          setTourTargetRect(null)
+        }
+        return
+      }
+
+      target.scrollIntoView({ block: 'center', behavior: attempts === 0 ? 'smooth' : 'auto' })
+      const rect = target.getBoundingClientRect()
+      if (!isCancelled) {
+        setTourTargetRect({
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        })
+      }
+    }
+
+    const initialTimer = window.setTimeout(updateRect, 80)
+
+    const handleViewportChange = () => {
+      const target = document.querySelector(currentTourStep.selector) as HTMLElement | null
+      if (!target) {
+        return
+      }
+      const rect = target.getBoundingClientRect()
+      setTourTargetRect({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      })
+    }
+
+    window.addEventListener('resize', handleViewportChange)
+    window.addEventListener('scroll', handleViewportChange, true)
+
+    return () => {
+      isCancelled = true
+      window.clearTimeout(initialTimer)
+      window.removeEventListener('resize', handleViewportChange)
+      window.removeEventListener('scroll', handleViewportChange, true)
+    }
+  }, [currentTourStep, isTourActive, location.pathname, navigate, tourIndex])
+
+  const tourCardStyle = useMemo(() => {
+    if (!tourTargetRect) {
+      return {}
+    }
+
+    const cardWidth = Math.min(360, window.innerWidth - 32)
+    const preferredTop = tourTargetRect.top + tourTargetRect.height + 18
+    const fallbackTop = Math.max(20, tourTargetRect.top - 210)
+    const top =
+      preferredTop + 220 > window.innerHeight
+        ? fallbackTop
+        : preferredTop
+    const left = Math.min(
+      Math.max(16, tourTargetRect.left),
+      Math.max(16, window.innerWidth - cardWidth - 16),
+    )
+
+    return {
+      top,
+      left,
+      width: cardWidth,
+    }
+  }, [tourTargetRect])
+
+  const startProductTour = () => {
+    setIsMobileMenuOpen(false)
+    setTourIndex(0)
+    setIsTourActive(true)
+  }
+
+  const stopProductTour = () => {
+    setIsTourActive(false)
+    setTourTargetRect(null)
+  }
+
+  const moveToNextTourStep = () => {
+    if (tourIndex >= productTourSteps.length - 1) {
+      stopProductTour()
+      return
+    }
+    setTourIndex((current) => current + 1)
+  }
+
   const handleNotificationOpen = async (notification: NotificationRecord) => {
     let detailedNotification = notification
 
@@ -452,6 +587,7 @@ function AppShell() {
       <button
         type="button"
         className="utility-button utility-button-primary"
+        data-tour="add-transaction"
         onClick={() => window.location.assign('/transactions/new')}
       >
         Add Transaction
@@ -467,6 +603,7 @@ function AppShell() {
       />
       <ProfileMenu
         profileName={profileName}
+        onStartProductTour={startProductTour}
         onLogout={async () => {
           await logout()
           window.location.assign('/login')
@@ -532,6 +669,38 @@ function AppShell() {
           <div className="app-toast app-toast-success">
             <span className="app-toast-kicker">Success</span>
             <strong>{transactionToast.message}</strong>
+          </div>
+        </div>
+      ) : null}
+      {isTourActive && currentTourStep ? (
+        <div className="product-tour-layer" role="dialog" aria-modal="true" aria-label="Product tour">
+          {tourTargetRect ? (
+            <div
+              className="product-tour-spotlight"
+              style={{
+                top: Math.max(8, tourTargetRect.top - 8),
+                left: Math.max(8, tourTargetRect.left - 8),
+                width: tourTargetRect.width + 16,
+                height: tourTargetRect.height + 16,
+              }}
+            />
+          ) : (
+            <div className="product-tour-backdrop" />
+          )}
+          <div className="product-tour-card" style={tourCardStyle}>
+            <span className="product-tour-step-count">
+              Step {tourIndex + 1} of {productTourSteps.length}
+            </span>
+            <h3>{currentTourStep.title}</h3>
+            <p>{currentTourStep.description}</p>
+            <div className="product-tour-actions">
+              <button type="button" className="secondary-button" onClick={stopProductTour}>
+                Skip tour
+              </button>
+              <button type="button" className="primary-button" onClick={moveToNextTourStep}>
+                {tourIndex === productTourSteps.length - 1 ? 'Finish' : 'Next'}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

@@ -19,7 +19,7 @@ function formatCurrency(value: number) {
 
 function GoalsPage() {
   const navigate = useNavigate()
-  const { goals, activeAccounts, contributeToGoal, deleteGoal } = useDevelopmentBootstrap()
+  const { goals, writableAccounts, contributeToGoal, deleteGoal } = useDevelopmentBootstrap()
   const [selectedGoal, setSelectedGoal] = useState<DevGoal | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [targetDateCutoff, setTargetDateCutoff] = useState('')
@@ -102,7 +102,7 @@ function GoalsPage() {
         </p>
       </header>
 
-      <div className="summary-grid">
+      <div className="summary-grid" data-tour="goals-summary-cards">
         <article className="summary-card summary-card-neutral">
           <p>Total saved</p>
           <strong>{formatCurrency(totals.current)}</strong>
@@ -132,7 +132,7 @@ function GoalsPage() {
         </div>
       ) : null}
 
-      <section className="goals-filter-bar">
+      <section className="goals-filter-bar" data-tour="goals-filter-bar">
         <label className="field field-small">
           <span>Target date up to</span>
           <input
@@ -151,38 +151,42 @@ function GoalsPage() {
         </button>
       </section>
 
-      <div className="page-actions">
+      <div className="page-actions" data-tour="goals-add-action">
         <button type="button" className="primary-button" onClick={() => navigate('/goals/new')}>
           Add goal
         </button>
       </div>
 
-      <ReportPanel
-        title="Goal progress chart"
-        subtitle="Target and achieved values for the goals currently stored for this user."
-      >
-        <GoalSummaryChart goals={filteredGoals} />
-      </ReportPanel>
+      <div data-tour="goals-progress-chart">
+        <ReportPanel
+          title="Goal progress chart"
+          subtitle="Target and achieved values for the goals currently stored for this user."
+        >
+          <GoalSummaryChart goals={filteredGoals} />
+        </ReportPanel>
+      </div>
 
       {selectedGoal ? (
         <GoalContributionPanel
           goal={selectedGoal}
-          accounts={activeAccounts}
+          accounts={writableAccounts}
           onCancel={() => setSelectedGoal(null)}
           onSubmit={handleContribution}
         />
       ) : null}
 
-      <ReportPanel
-        title="Upcoming goals"
-        subtitle="Your saved goals sorted by deadline, with quick contribution and delete actions."
-      >
-        <GoalsList
-          goals={filteredGoals}
-          onContribute={(goalId) => setSelectedGoal(goals.find((goal) => goal.id === goalId) ?? null)}
-          onDelete={handleDelete}
-        />
-      </ReportPanel>
+      <div data-tour="goals-list-panel">
+        <ReportPanel
+          title="Upcoming goals"
+          subtitle="Your saved goals sorted by deadline, with quick contribution and delete actions."
+        >
+          <GoalsList
+            goals={filteredGoals}
+            onContribute={(goalId) => setSelectedGoal(goals.find((goal) => goal.id === goalId) ?? null)}
+            onDelete={handleDelete}
+          />
+        </ReportPanel>
+      </div>
     </section>
   )
 }

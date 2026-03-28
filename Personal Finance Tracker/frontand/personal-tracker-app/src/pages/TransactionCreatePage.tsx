@@ -7,7 +7,7 @@ import type { TransactionFormValues } from '../types/transaction'
 
 function TransactionCreatePage() {
   const navigate = useNavigate()
-  const { user, activeAccounts, categories, createCategory } = useDevelopmentBootstrap()
+  const { user, activeAccounts, writableAccounts, categories, createCategory } = useDevelopmentBootstrap()
   const { saveTransaction } = useTransactionsData({
     userId: user.id,
     accounts: activeAccounts,
@@ -41,7 +41,7 @@ function TransactionCreatePage() {
       ) : null}
 
       <TransactionFormPanel
-        accounts={activeAccounts}
+        accounts={writableAccounts}
         categories={categories}
         editingTransaction={null}
         onCancel={() => navigate('/transactions')}

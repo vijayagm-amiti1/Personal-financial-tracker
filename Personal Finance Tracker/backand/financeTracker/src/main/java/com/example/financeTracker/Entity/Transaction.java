@@ -1,7 +1,9 @@
 package com.example.financeTracker.Entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Entity;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -14,6 +16,8 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -69,6 +73,15 @@ public class Transaction {
 
     @Column(name = "payment_method", length = 50)
     private String paymentMethod;
+
+    @Column(name = "is_recurred", nullable = false, columnDefinition = "boolean default false")
+    private boolean recurred;
+
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(name = "transaction_tags", joinColumns = @JoinColumn(name = "transaction_id"))
+    @Column(name = "tag", nullable = false, length = 100)
+    private List<String> tags = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

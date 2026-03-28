@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { DevAccount, DevCategory } from '../../types/report'
+import useRulesData from '../../hooks/useRulesData'
+import { evaluateRuleSuggestions } from '../../utils/ruleMatcher'
 import type { TransactionFormValues, TransactionRecord } from '../../types/transaction'
 import {
   CATEGORY_ICON_OPTIONS,
@@ -51,7 +53,7 @@ function toFormValues(transaction: TransactionRecord | null): TransactionFormVal
     merchant: transaction.merchant ?? '',
     note: transaction.note ?? '',
     paymentMethod: transaction.paymentMethod ?? '',
-    tags: '',
+    tags: transaction.tags.join(', '),
   }
 }
 
@@ -72,10 +74,19 @@ function TransactionFormPanel({
   const [customCategoryIcon, setCustomCategoryIcon] = useState('shopping-basket')
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
   const [iconPage, setIconPage] = useState(1)
+  const [categoryTouched, setCategoryTouched] = useState(false)
+  const [tagsTouched, setTagsTouched] = useState(false)
+  const [autoAppliedCategoryId, setAutoAppliedCategoryId] = useState<string | null>(null)
+  const [autoAppliedTags, setAutoAppliedTags] = useState<string[]>([])
+  const { items: rules } = useRulesData()
 
   useEffect(() => {
     setValues(toFormValues(editingTransaction))
     setError(null)
+    setCategoryTouched(false)
+    setTagsTouched(false)
+    setAutoAppliedCategoryId(null)
+    setAutoAppliedTags([])
   }, [editingTransaction])
 
   useEffect(() => {
@@ -96,6 +107,14 @@ function TransactionFormPanel({
         return
       }
 
+      if (field === 'categoryId') {
+        setCategoryTouched(true)
+      }
+
+      if (field === 'tags') {
+        setTagsTouched(true)
+      }
+
       setValues((currentValues) => ({
         ...currentValues,
         [field]: event.target.value,
@@ -105,6 +124,97 @@ function TransactionFormPanel({
   const filteredCategories = categories.filter((category) =>
     values.type === 'income' ? category.type === 'income' : category.type === 'expense',
   )
+  const ruleSuggestions = evaluateRuleSuggestions(rules, values, filteredCategories)
+
+  useEffect(() => {
+    if (categoryTouched) {
+      return
+    }
+
+    const currentCategoryIsAutoApplied =
+      autoAppliedCategoryId !== null && values.categoryId === autoAppliedCategoryId
+
+    if (values.type === 'transfer') {
+      if (currentCategoryIsAutoApplied) {
+        setValues((currentValues) => ({
+          ...currentValues,
+          categoryId: '',
+        }))
+      }
+      if (autoAppliedCategoryId !== null) {
+        setAutoAppliedCategoryId(null)
+      }
+      return
+    }
+
+    if (ruleSuggestions.suggestedCategoryId) {
+      if (values.categoryId === '' || currentCategoryIsAutoApplied) {
+        if (values.categoryId !== ruleSuggestions.suggestedCategoryId) {
+          setValues((currentValues) => ({
+            ...currentValues,
+            categoryId: ruleSuggestions.suggestedCategoryId ?? '',
+          }))
+        }
+        if (autoAppliedCategoryId !== ruleSuggestions.suggestedCategoryId) {
+          setAutoAppliedCategoryId(ruleSuggestions.suggestedCategoryId)
+        }
+      }
+      return
+    }
+
+    if (currentCategoryIsAutoApplied) {
+      setValues((currentValues) => ({
+        ...currentValues,
+        categoryId: '',
+      }))
+    }
+    if (autoAppliedCategoryId !== null) {
+      setAutoAppliedCategoryId(null)
+    }
+  }, [
+    autoAppliedCategoryId,
+    categoryTouched,
+    ruleSuggestions.suggestedCategoryId,
+    values.categoryId,
+    values.type,
+  ])
+
+  useEffect(() => {
+    if (tagsTouched) {
+      return
+    }
+
+    const currentAutoAppliedTagsText = autoAppliedTags.join(', ')
+    const nextSuggestedTagsText = ruleSuggestions.suggestedTags.join(', ')
+    const currentTagsIsAutoApplied =
+      currentAutoAppliedTagsText !== '' && values.tags.trim() === currentAutoAppliedTagsText
+
+    if (nextSuggestedTagsText !== '') {
+      if (values.tags.trim() === '' || currentTagsIsAutoApplied) {
+        if (values.tags !== nextSuggestedTagsText) {
+          setValues((currentValues) => ({
+            ...currentValues,
+            tags: nextSuggestedTagsText,
+          }))
+        }
+        if (currentAutoAppliedTagsText !== nextSuggestedTagsText) {
+          setAutoAppliedTags(ruleSuggestions.suggestedTags)
+        }
+      }
+      return
+    }
+
+    if (currentTagsIsAutoApplied) {
+      setValues((currentValues) => ({
+        ...currentValues,
+        tags: '',
+      }))
+    }
+    if (autoAppliedTags.length > 0) {
+      setAutoAppliedTags([])
+    }
+  }, [autoAppliedTags, ruleSuggestions.suggestedTags, tagsTouched, values.tags])
+
   const totalIconPages = Math.max(1, Math.ceil(CATEGORY_ICON_OPTIONS.length / ICONS_PER_PAGE))
   const visibleIconOptions = CATEGORY_ICON_OPTIONS.slice(
     (iconPage - 1) * ICONS_PER_PAGE,
@@ -219,6 +329,7 @@ function TransactionFormPanel({
             <label className="field">
               <span>Account</span>
               <select value={values.accountId} onChange={updateField('accountId')}>
+                <option value="">Select account</option>
                 {accounts.map((account) => (
                   <option key={account.id} value={account.id}>
                     {account.name}
@@ -280,6 +391,21 @@ function TransactionFormPanel({
               <textarea value={values.note} onChange={updateField('note')} rows={4} />
             </label>
           </div>
+
+          {ruleSuggestions.matchedRuleNames.length > 0 ? (
+            <div className="rule-suggestion-panel">
+              <strong>Rule suggestions</strong>
+              {ruleSuggestions.suggestedCategoryName ? (
+                <span>Suggested category: {ruleSuggestions.suggestedCategoryName}</span>
+              ) : null}
+              {ruleSuggestions.suggestedTags.length > 0 ? (
+                <span>Suggested tags: {ruleSuggestions.suggestedTags.join(', ')}</span>
+              ) : null}
+              {ruleSuggestions.alertMessages.length > 0 ? (
+                <span>Alert on save: {ruleSuggestions.alertMessages.join(' | ')}</span>
+              ) : null}
+            </div>
+          ) : null}
 
           {error ? <div className="report-error">{error}</div> : null}
 

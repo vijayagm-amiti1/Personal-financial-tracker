@@ -57,6 +57,10 @@
       "method": "GET",
       "path": "/api/accounts"
     },
+    "getById": {
+      "method": "GET",
+      "path": "/api/accounts/{accountId}"
+    },
     "create": {
       "method": "POST",
       "path": "/api/accounts"
@@ -68,6 +72,32 @@
     "delete": {
       "method": "DELETE",
       "path": "/api/accounts/{accountId}"
+    },
+    "getMembers": {
+      "method": "GET",
+      "path": "/api/accounts/{accountId}/members"
+    },
+    "invite": {
+      "method": "POST",
+      "path": "/api/accounts/{accountId}/invite"
+    },
+    "updateMember": {
+      "method": "PUT",
+      "path": "/api/accounts/{accountId}/members/{userId}"
+    },
+    "removeMember": {
+      "method": "DELETE",
+      "path": "/api/accounts/{accountId}/members/{userId}"
+    }
+  },
+  "accountInvites": {
+    "getByToken": {
+      "method": "GET",
+      "path": "/api/account-invites/{token}"
+    },
+    "respond": {
+      "method": "POST",
+      "path": "/api/account-invites/{token}/respond"
     }
   },
   "budgets": {
@@ -166,6 +196,24 @@
       "path": "/api/recurring/{recurringId}"
     }
   },
+  "rules": {
+    "getAll": {
+      "method": "GET",
+      "path": "/api/rules"
+    },
+    "create": {
+      "method": "POST",
+      "path": "/api/rules"
+    },
+    "update": {
+      "method": "PUT",
+      "path": "/api/rules/{ruleId}"
+    },
+    "delete": {
+      "method": "DELETE",
+      "path": "/api/rules/{ruleId}"
+    }
+  },
   "reports": {
     "monthlyDaily": {
       "method": "GET",
@@ -176,6 +224,36 @@
       "method": "GET",
       "path": "/api/reports/monthly-category-spending",
       "queryParams": ["accountId", "month", "year"]
+    },
+    "trends": {
+      "method": "GET",
+      "path": "/api/reports/trends"
+    },
+    "netWorth": {
+      "method": "GET",
+      "path": "/api/reports/net-worth"
+    }
+  },
+  "insights": {
+    "getAll": {
+      "method": "GET",
+      "path": "/api/insights"
+    }
+  },
+  "forecast": {
+    "month": {
+      "method": "GET",
+      "path": "/api/forecast/month"
+    },
+    "daily": {
+      "method": "GET",
+      "path": "/api/forecast/daily"
+    }
+  },
+  "financialHealth": {
+    "score": {
+      "method": "GET",
+      "path": "/api/financial-health"
     }
   }
 }

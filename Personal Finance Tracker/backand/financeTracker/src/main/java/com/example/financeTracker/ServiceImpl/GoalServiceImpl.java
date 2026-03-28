@@ -4,6 +4,7 @@ import com.example.financeTracker.DTO.RequestDTO.GoalContributionRequest;
 import com.example.financeTracker.DTO.RequestDTO.GoalRequest;
 import com.example.financeTracker.DTO.ResponseDTO.GoalResponse;
 import com.example.financeTracker.Entity.Account;
+import com.example.financeTracker.Entity.AccountMemberRole;
 import com.example.financeTracker.Entity.Category;
 import com.example.financeTracker.Entity.Goal;
 import com.example.financeTracker.Entity.NotificationType;
@@ -18,6 +19,7 @@ import com.example.financeTracker.Repository.NotificationRepository;
 import com.example.financeTracker.Repository.TransactionRepository;
 import com.example.financeTracker.Repository.UserRepository;
 import com.example.financeTracker.Service.GoalService;
+import com.example.financeTracker.Service.AccountSharingService;
 import com.example.financeTracker.Service.NotificationEmailService;
 import com.example.financeTracker.Service.NotificationService;
 import java.time.LocalDate;
@@ -46,10 +48,11 @@ public class GoalServiceImpl implements GoalService {
     private final NotificationService notificationService;
     private final NotificationEmailService notificationEmailService;
     private final NotificationRepository notificationRepository;
+    private final AccountSharingService accountSharingService;
 
     @Override
     public List<GoalResponse> getGoalResponsesByUserId(UUID userId) {
-        return goalRepository.findAllByUserId(userId).stream()
+        return goalRepository.findAllAccessibleByUserId(userId).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -59,8 +62,7 @@ public class GoalServiceImpl implements GoalService {
     public GoalResponse createGoal(GoalRequest request, UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        Account linkedAccount = accountRepository.findByIdAndUserIdAndIsActiveTrue(request.getLinkedAccountId(), userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Linked account not found for this user"));
+        Account linkedAccount = getEditableAccount(request.getLinkedAccountId(), userId, "Linked account not found for this user");
         goalRepository.findByUserIdAndNameIgnoreCase(userId, request.getName().trim())
                 .ifPresent(existingGoal -> {
                     throw new BadRequestException("A goal with this name already exists for this user");
@@ -84,11 +86,11 @@ public class GoalServiceImpl implements GoalService {
     @Override
     @Transactional
     public GoalResponse contributeToGoal(GoalContributionRequest request, UUID userId) {
-        Goal goal = goalRepository.findByIdAndUserId(request.getGoalId(), userId)
+        Goal goal = goalRepository.findAccessibleByIdAndUserId(request.getGoalId(), userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found for this user"));
-        Account sourceAccount = accountRepository.findByIdAndUserIdAndIsActiveTrue(request.getAccountId(), userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found for this user"));
+        Account sourceAccount = getEditableAccount(request.getAccountId(), userId, "Account not found for this user");
         Account linkedAccount = goal.getLinkedAccount();
+        ensureCanEdit(linkedAccount, userId);
 
         if (sourceAccount.getCurrentBalance().compareTo(request.getAmount()) < 0) {
             throw new BadRequestException("Insufficient balance in account");
@@ -145,19 +147,20 @@ public class GoalServiceImpl implements GoalService {
 
     @Override
     public List<Goal> getGoalsByUserId(UUID userId) {
-        return goalRepository.findAllByUserId(userId);
+        return goalRepository.findAllAccessibleByUserId(userId);
     }
 
     @Override
     public Optional<Goal> getGoalByIdAndUserId(UUID goalId, UUID userId) {
-        return goalRepository.findByIdAndUserId(goalId, userId);
+        return goalRepository.findAccessibleByIdAndUserId(goalId, userId);
     }
 
     @Override
     @Transactional
     public void deleteGoal(UUID goalId, UUID userId) {
-        Goal goal = goalRepository.findByIdAndUserId(goalId, userId)
+        Goal goal = goalRepository.findAccessibleByIdAndUserId(goalId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found for this user"));
+        ensureCanEdit(goal.getLinkedAccount(), userId);
 
         List<Transaction> goalContributionTransactions = transactionRepository
                 .findAllByGoalIdAndUserIdOrderByTransactionDateDesc(goalId, userId);
@@ -215,5 +218,22 @@ public class GoalServiceImpl implements GoalService {
                 .note("Goal contribution from " + account.getName())
                 .paymentMethod("goal_contribution")
                 .build();
+    }
+
+    private Account getEditableAccount(UUID accountId, UUID userId, String notFoundMessage) {
+        Account account;
+        try {
+            account = accountSharingService.requireAccessibleAccount(accountId, userId);
+        } catch (ResourceNotFoundException exception) {
+            throw new ResourceNotFoundException(notFoundMessage);
+        }
+        ensureCanEdit(account, userId);
+        return account;
+    }
+
+    private void ensureCanEdit(Account account, UUID userId) {
+        if (accountSharingService.getRoleForAccount(account.getId(), userId) == AccountMemberRole.VIEWER) {
+            throw new ResourceNotFoundException("Account not found for this user");
+        }
     }
 }

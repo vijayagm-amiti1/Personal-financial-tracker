@@ -2,8 +2,8 @@ package com.example.financeTracker.AOP.Report;
 
 import com.example.financeTracker.Exception.BadRequestException;
 import com.example.financeTracker.Exception.ResourceNotFoundException;
-import com.example.financeTracker.Repository.AccountRepository;
 import com.example.financeTracker.Repository.UserRepository;
+import com.example.financeTracker.Service.AccountSharingService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
 public class ReportValidationAspect {
 
     private final UserRepository userRepository;
-    private final AccountRepository accountRepository;
+    private final AccountSharingService accountSharingService;
 
     @Before("(execution(* com.example.financeTracker.Service.ReportService.getMonthlyDailyReport(..)) && args(userId, accountId, month, year))"
             + " || (execution(* com.example.financeTracker.Service.ReportService.getMonthlyCategorySpendingReport(..)) && args(userId, accountId, month, year))")
@@ -39,9 +39,7 @@ public class ReportValidationAspect {
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("User not found");
         }
-        if (accountRepository.findByIdAndUserId(accountId, userId).isEmpty()) {
-            throw new ResourceNotFoundException("Account not found for this user");
-        }
+        accountSharingService.requireAccessibleAccount(accountId, userId);
 
         log.debug("Validated report request for user {} in {}", userId, joinPoint.getSignature().toShortString());
     }

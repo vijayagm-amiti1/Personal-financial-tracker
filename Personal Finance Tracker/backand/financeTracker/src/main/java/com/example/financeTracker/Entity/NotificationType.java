@@ -4,5 +4,6 @@ public enum NotificationType {
     BUDGET_WARNING,
     GOAL_REACHED,
     SYSTEM_UPDATE,
-    DAILY_REMINDER
+    DAILY_REMINDER,
+    RULE_ALERT
 }

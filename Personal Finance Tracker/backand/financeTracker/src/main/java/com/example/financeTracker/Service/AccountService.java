@@ -17,6 +17,8 @@ public interface AccountService {
 
     List<AccountResponse> getAccountResponsesByUserId(UUID userId);
 
+    AccountResponse getAccountResponseById(UUID accountId, UUID userId);
+
     List<Account> getAccountsByUserId(UUID userId);
 
     Optional<Account> getAccountByIdAndUserId(UUID accountId, UUID userId);

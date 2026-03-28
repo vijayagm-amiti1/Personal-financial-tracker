@@ -1,5 +1,6 @@
 package com.example.financeTracker.DTO.ResponseDTO;
 
+import com.example.financeTracker.Entity.AccountMemberRole;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -22,5 +23,8 @@ public class AccountResponse {
     private BigDecimal currentBalance;
     private String institutionName;
     private Boolean isActive;
+    private AccountMemberRole accessRole;
+    private Long sharedMemberCount;
+    private String ownerDisplayName;
     private LocalDateTime createdAt;
 }

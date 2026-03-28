@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ReportPanel from '../components/reports/ReportPanel'
 import useDevelopmentBootstrap from '../hooks/useDevelopmentBootstrap'
 import type { DevAccount } from '../types/report'
@@ -12,6 +13,7 @@ function formatCurrency(value?: number) {
 }
 
 function AccountsPage() {
+  const navigate = useNavigate()
   const { activeAccounts, createAccount, updateAccount, deactivateAccount } = useDevelopmentBootstrap()
   const [editingAccount, setEditingAccount] = useState<DevAccount | null>(null)
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false)
@@ -113,7 +115,7 @@ function AccountsPage() {
         </p>
       </header>
 
-      <div className="summary-grid">
+      <div className="summary-grid" data-tour="accounts-summary-cards">
         <article className="summary-card summary-card-neutral">
           <p>Accounts</p>
           <strong>{summary.total}</strong>
@@ -132,10 +134,11 @@ function AccountsPage() {
       </div>
 
       <div className="budget-layout">
-        <ReportPanel
-          title="Account actions"
-          subtitle="Create a new account only when needed, or manage the accounts that already exist."
-        >
+        <div data-tour="accounts-actions-panel">
+          <ReportPanel
+            title="Account actions"
+            subtitle="Create a new account only when needed, or manage the accounts that already exist."
+          >
           {!editingAccount && !isCreateFormOpen ? (
             <div className="page-actions">
               <button type="button" className="primary-button" onClick={focusCreateForm}>
@@ -198,12 +201,14 @@ function AccountsPage() {
               </form>
             </div>
           ) : null}
-        </ReportPanel>
+          </ReportPanel>
+        </div>
 
-        <ReportPanel
-          title="Account list"
-          subtitle="Delete hides the account from active screens. Historical transactions can still keep the old account reference."
-        >
+        <div data-tour="accounts-list-panel">
+          <ReportPanel
+            title="Account list"
+            subtitle="Delete hides the account from active screens. Historical transactions can still keep the old account reference."
+          >
           {activeAccounts.length === 0 ? (
             <div className="accounts-empty-state">
               <div className="accounts-empty-icon">+</div>
@@ -236,7 +241,22 @@ function AccountsPage() {
                     </div>
                   </div>
 
+                  <div className="account-sharing-summary">
+                    <span>Access</span>
+                    <strong>{account.accessRole ?? 'VIEWER'}</strong>
+                    <span>
+                      Shared with {account.sharedMemberCount ?? 1} member{(account.sharedMemberCount ?? 1) === 1 ? '' : 's'}
+                    </span>
+                  </div>
+
                   <div className="budget-card-actions">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => navigate(`/accounts/${account.id}/sharing`)}
+                    >
+                      Manage sharing
+                    </button>
                     <button type="button" className="secondary-button" onClick={() => loadEditForm(account)}>
                       Edit
                     </button>
@@ -252,7 +272,8 @@ function AccountsPage() {
               ))}
             </div>
           )}
-        </ReportPanel>
+          </ReportPanel>
+        </div>
       </div>
     </section>
   )

@@ -3,6 +3,8 @@ package com.example.financeTracker.ServiceImpl;
 import com.example.financeTracker.DTO.RequestDTO.TransactionRequest;
 import com.example.financeTracker.DTO.ResponseDTO.TransactionResponse;
 import com.example.financeTracker.Entity.Account;
+import com.example.financeTracker.Entity.AccountMemberRole;
+import com.example.financeTracker.Entity.AutomationRule;
 import com.example.financeTracker.Entity.Budget;
 import com.example.financeTracker.Entity.Category;
 import com.example.financeTracker.Entity.NotificationType;
@@ -17,6 +19,8 @@ import com.example.financeTracker.Repository.UserRepository;
 import com.example.financeTracker.Service.NotificationEmailService;
 import com.example.financeTracker.Service.NotificationService;
 import com.example.financeTracker.Service.TransactionService;
+import com.example.financeTracker.Service.AutomationRuleEngineService;
+import com.example.financeTracker.Service.AccountSharingService;
 import com.example.financeTracker.Exception.BadRequestException;
 import com.example.financeTracker.Exception.ResourceNotFoundException;
 import java.math.BigDecimal;
@@ -46,27 +50,26 @@ public class TransactionServiceImpl implements TransactionService {
     private final NotificationService notificationService;
     private final NotificationEmailService notificationEmailService;
     private final NotificationRepository notificationRepository;
+    private final AutomationRuleEngineService automationRuleEngineService;
+    private final AccountSharingService accountSharingService;
 
     @Override
     @Transactional
-    public TransactionResponse createTransaction(TransactionRequest request, UUID userId) {
+    public TransactionResponse createTransaction(TransactionRequest request, UUID userId, boolean isRecurred) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         String normalizedType = request.getType().trim().toLowerCase(Locale.ROOT);
         Account account = getRequiredAccount(request.getAccountId(), userId, "accountId");
         Account toAccount = resolveToAccount(request, userId, normalizedType);
         Category category = resolveCategory(request.getCategoryId(), userId);
+        List<AutomationRule> matchingRules = automationRuleEngineService.findMatchingRules(userId, request);
 
-        Transaction transaction = buildTransaction(user, account, toAccount, category, request, normalizedType);
+        Transaction transaction = buildTransaction(user, account, toAccount, category, request, normalizedType, isRecurred);
         applyTransactionEffect(transaction, true);
         applyBudgetImpact(transaction, transaction.getAmount());
         persistTouchedAccounts(account, toAccount);
         Transaction savedTransaction = transactionRepository.save(transaction);
-
-        if (request.getTags() != null && !request.getTags().isEmpty()) {
-            log.info("Transaction {} received tags {} but tags are not persisted in the current schema",
-                    savedTransaction.getId(), request.getTags());
-        }
+        triggerRuleAlerts(savedTransaction, matchingRules);
 
         log.info("Created {} transaction {} for user {}", normalizedType, savedTransaction.getId(), userId);
         return mapToResponse(savedTransaction);
@@ -75,8 +78,11 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public TransactionResponse updateTransaction(UUID transactionId, TransactionRequest request, UUID userId) {
-        Transaction existingTransaction = transactionRepository.findByIdAndUserId(transactionId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found for this user"));
+        Transaction existingTransaction = getAccessibleTransaction(transactionId, userId);
+        ensureCanEdit(existingTransaction.getAccount(), userId);
+        if (existingTransaction.getToAccount() != null) {
+            ensureCanEdit(existingTransaction.getToAccount(), userId);
+        }
 
         String normalizedType = request.getType().trim().toLowerCase(Locale.ROOT);
         Account newAccount = getRequiredAccount(request.getAccountId(), userId, "accountId");
@@ -102,6 +108,7 @@ public class TransactionServiceImpl implements TransactionService {
         existingTransaction.setMerchant(request.getMerchant());
         existingTransaction.setNote(request.getNote());
         existingTransaction.setPaymentMethod(request.getPaymentMethod());
+        existingTransaction.setTags(normalizeTags(request.getTags()));
 
         applyTransactionEffect(existingTransaction, false);
         applyBudgetImpact(existingTransaction, existingTransaction.getAmount());
@@ -123,7 +130,8 @@ public class TransactionServiceImpl implements TransactionService {
                                          Account toAccount,
                                          Category category,
                                          TransactionRequest request,
-                                         String normalizedType) {
+                                         String normalizedType,
+                                         boolean isRecurred) {
         return Transaction.builder()
                 .user(user)
                 .account(account)
@@ -136,6 +144,8 @@ public class TransactionServiceImpl implements TransactionService {
                 .merchant(request.getMerchant())
                 .note(request.getNote())
                 .paymentMethod(request.getPaymentMethod())
+                .tags(normalizeTags(request.getTags()))
+                .recurred(isRecurred)
                 .build();
     }
 
@@ -148,48 +158,51 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public List<TransactionResponse> getTransactionResponsesByUserId(UUID userId) {
         validateUserExists(userId);
-        List<Transaction> transactions = transactionRepository.findAllByUserIdAndAccountIsActiveTrueOrderByTransactionDateDesc(userId);
+        List<Transaction> transactions = transactionRepository.findAllAccessibleByUserIdOrderByTransactionDateDesc(userId);
         return mapToResponses(transactions);
     }
 
     @Override
     public List<TransactionResponse> getTransactionResponsesByAccountId(UUID accountId, UUID userId) {
         validateUserExists(userId);
-        getRequiredAccount(accountId, userId, "accountId");
+        accountSharingService.requireAccessibleAccount(accountId, userId);
         List<Transaction> transactions = transactionRepository
-                .findAllByAccountIdAndUserIdAndAccountIsActiveTrueOrderByTransactionDateDesc(accountId, userId);
+                .findAllByAccountIdOrToAccountIdAndAccountIsActiveTrueOrderByTransactionDateDesc(accountId, accountId);
         return mapToResponses(transactions);
     }
 
     @Override
     public TransactionResponse getTransactionResponseById(UUID transactionId, UUID userId) {
         validateUserExists(userId);
-        Transaction transaction = transactionRepository.findByIdAndUserIdAndAccountIsActiveTrue(transactionId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found for this user"));
+        Transaction transaction = getAccessibleTransaction(transactionId, userId);
         return mapToResponse(transaction);
     }
 
     @Override
     public List<Transaction> getTransactionsByUserId(UUID userId) {
-        return transactionRepository.findAllByUserIdAndAccountIsActiveTrueOrderByTransactionDateDesc(userId);
+        return transactionRepository.findAllAccessibleByUserIdOrderByTransactionDateDesc(userId);
     }
 
     @Override
     public List<Transaction> getTransactionsByUserIdAndDateRange(UUID userId, LocalDate startDate, LocalDate endDate) {
-        return transactionRepository.findAllByUserIdAndAccountIsActiveTrueAndTransactionDateBetweenOrderByTransactionDateDesc(
+        return transactionRepository.findAllAccessibleByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
                 userId, startDate, endDate);
     }
 
     @Override
     public Optional<Transaction> getTransactionByIdAndUserId(UUID transactionId, UUID userId) {
-        return transactionRepository.findByIdAndUserIdAndAccountIsActiveTrue(transactionId, userId);
+        return transactionRepository.findById(transactionId)
+                .filter(transaction -> hasAccess(transaction, userId));
     }
 
     @Override
     @Transactional
     public void deleteTransaction(UUID transactionId, UUID userId) {
-        Transaction transaction = transactionRepository.findByIdAndUserId(transactionId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found for this user"));
+        Transaction transaction = getAccessibleTransaction(transactionId, userId);
+        ensureCanEdit(transaction.getAccount(), userId);
+        if (transaction.getToAccount() != null) {
+            ensureCanEdit(transaction.getToAccount(), userId);
+        }
 
         revertTransactionEffect(transaction);
         revertBudgetImpact(transaction.getType(), transaction.getCategory(), transaction.getTransactionDate(), userId, transaction.getAmount());
@@ -214,8 +227,45 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private Account getRequiredAccount(UUID accountId, UUID userId, String fieldName) {
-        return accountRepository.findByIdAndUserIdAndIsActiveTrue(accountId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException(fieldName + " does not exist for this user"));
+        Account account = accountSharingService.requireAccessibleAccount(accountId, userId);
+        ensureCanEdit(account, userId);
+        return account;
+    }
+
+    private Transaction getAccessibleTransaction(UUID transactionId, UUID userId) {
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found for this user"));
+        if (!hasAccess(transaction, userId)) {
+            throw new ResourceNotFoundException("Transaction not found for this user");
+        }
+        return transaction;
+    }
+
+    private boolean hasAccess(Transaction transaction, UUID userId) {
+        if (transaction.getAccount() != null) {
+            try {
+                accountSharingService.requireAccessibleAccount(transaction.getAccount().getId(), userId);
+                return true;
+            } catch (RuntimeException ignored) {
+                // Check destination account before rejecting.
+            }
+        }
+        if (transaction.getToAccount() != null) {
+            try {
+                accountSharingService.requireAccessibleAccount(transaction.getToAccount().getId(), userId);
+                return true;
+            } catch (RuntimeException ignored) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private void ensureCanEdit(Account account, UUID userId) {
+        AccountMemberRole role = accountSharingService.getRoleForAccount(account.getId(), userId);
+        if (role == AccountMemberRole.VIEWER) {
+            throw new BadRequestException("You have read-only access to this account");
+        }
     }
 
     private void validateUserExists(UUID userId) {
@@ -458,6 +508,41 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
+    private List<String> normalizeTags(List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return tags.stream()
+                .filter(tag -> tag != null && !tag.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+    }
+
+    private void triggerRuleAlerts(Transaction transaction, List<AutomationRule> matchingRules) {
+        for (AutomationRule rule : matchingRules) {
+            if (!"create_alert".equals(rule.getActionType())) {
+                continue;
+            }
+
+            String title = "Rule alert: " + rule.getName();
+            String message = rule.getActionValue()
+                    + " for "
+                    + transaction.getType()
+                    + " transaction of "
+                    + transaction.getAmount()
+                    + " on "
+                    + transaction.getTransactionDate()
+                    + ".";
+            notificationService.createNotification(
+                    transaction.getUser().getId(),
+                    title,
+                    message,
+                    NotificationType.RULE_ALERT);
+        }
+    }
+
     private TransactionResponse mapToResponse(Transaction transaction) {
         return TransactionResponse.builder()
                 .id(transaction.getId())
@@ -472,6 +557,8 @@ public class TransactionServiceImpl implements TransactionService {
                 .merchant(transaction.getMerchant())
                 .note(transaction.getNote())
                 .paymentMethod(transaction.getPaymentMethod())
+                .tags(transaction.getTags())
+                .isRecurred(transaction.isRecurred())
                 .createdAt(transaction.getCreatedAt())
                 .updatedAt(transaction.getUpdatedAt())
                 .build();

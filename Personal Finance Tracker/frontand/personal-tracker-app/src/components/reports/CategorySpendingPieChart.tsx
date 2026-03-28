@@ -138,7 +138,7 @@ function CategorySpendingPieChart({
               />
             )
           })}
-          <circle cx="140" cy="140" r="54" fill="#ffffff" />
+          <circle cx="140" cy="140" r="54" className="pie-chart-inner-circle" />
           <text x="140" y="128" textAnchor="middle" className="pie-chart-total-label">
             Total
           </text>

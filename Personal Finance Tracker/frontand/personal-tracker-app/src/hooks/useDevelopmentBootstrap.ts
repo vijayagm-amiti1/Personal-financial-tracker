@@ -44,6 +44,9 @@ function mapAccount(item: unknown): DevAccount {
     openingBalance: Number(record.openingBalance ?? 0),
     currentBalance: Number(record.currentBalance ?? 0),
     isActive: record.isActive !== false,
+    accessRole: String(record.accessRole ?? 'VIEWER') as DevAccount['accessRole'],
+    sharedMemberCount: Number(record.sharedMemberCount ?? 0),
+    ownerDisplayName: String(record.ownerDisplayName ?? ''),
     createdAt: record.createdAt ? String(record.createdAt) : undefined,
   }
 }
@@ -458,10 +461,19 @@ function useDevelopmentBootstrap() {
     [state.accounts],
   )
 
+  const writableAccounts = useMemo(
+    () =>
+      activeAccounts.filter(
+        (account) => account.accessRole === 'OWNER' || account.accessRole === 'EDITOR',
+      ),
+    [activeAccounts],
+  )
+
   return {
     user,
     ...state,
     activeAccounts,
+    writableAccounts,
     refreshAccounts,
     refreshCategories,
     refreshGoals,

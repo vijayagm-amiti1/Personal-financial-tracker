@@ -4,6 +4,7 @@ import com.example.financeTracker.Exception.BadRequestException;
 import com.example.financeTracker.Exception.ResourceNotFoundException;
 import com.example.financeTracker.Repository.TransactionRepository;
 import com.example.financeTracker.Repository.UserRepository;
+import com.example.financeTracker.Service.AccountSharingService;
 import com.example.financeTracker.DTO.RequestDTO.TransactionRequest;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -22,6 +23,7 @@ public class TransactionValidationAspect {
 
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
+    private final AccountSharingService accountSharingService;
 
     @Before("(execution(* com.example.financeTracker.Service.TransactionService.createTransaction(..)) && args(request, userId))"
             + " || (execution(* com.example.financeTracker.Service.TransactionService.updateTransaction(..)) && args(transactionId, request, userId))")
@@ -68,7 +70,7 @@ public class TransactionValidationAspect {
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("User not found");
         }
-        if (transactionRepository.findByIdAndUserId(transactionId, userId).isEmpty()) {
+        if (transactionRepository.findById(transactionId).isEmpty()) {
             throw new ResourceNotFoundException("Transaction not found for this user");
         }
 

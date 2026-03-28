@@ -14,6 +14,8 @@ export type TransactionRecord = {
   merchant: string | null
   note: string | null
   paymentMethod: string | null
+  tags: string[]
+  isRecurred: boolean
   createdAt: string
   updatedAt: string
 }

@@ -105,7 +105,7 @@ function BudgetsPage() {
         </span>
       </div>
 
-      <section className="goals-filter-bar">
+      <section className="goals-filter-bar" data-tour="budgets-filters">
         <label className="field field-small">
           <span>Month</span>
           <select value={selectedMonth} onChange={(event) => setSelectedMonth(Number(event.target.value))}>
@@ -129,7 +129,7 @@ function BudgetsPage() {
 
       </section>
 
-      <div className="summary-grid">
+      <div className="summary-grid" data-tour="budgets-summary-cards">
         <article className="summary-card summary-card-neutral">
           <p>Total budget plans</p>
           <strong>{summary.totalPlans}</strong>
@@ -172,25 +172,29 @@ function BudgetsPage() {
       ) : null}
 
       <div className="budget-layout">
-        <BudgetFormPanel
-          categories={categories}
-          editingBudget={editingBudget}
-          selectedMonth={selectedMonth}
-          selectedYear={selectedYear}
-          onCancel={() => setEditingBudget(null)}
-          onSubmit={handleSave}
-        />
+        <div data-tour="budgets-form-panel">
+          <BudgetFormPanel
+            categories={categories}
+            editingBudget={editingBudget}
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            onCancel={() => setEditingBudget(null)}
+            onSubmit={handleSave}
+          />
+        </div>
 
-        <ReportPanel
-          title="Budget plans"
-          subtitle="Each plan shows the category budget, actual expense, and how close it is to the limit."
-        >
-          {isLoading ? (
-            <div className="empty-state">Loading budgets...</div>
-          ) : (
-            <BudgetPlansList budgets={visibleBudgets} onEdit={setEditingBudget} onDelete={handleDelete} />
-          )}
-        </ReportPanel>
+        <div data-tour="budgets-plan-list">
+          <ReportPanel
+            title="Budget plans"
+            subtitle="Each plan shows the category budget, actual expense, and how close it is to the limit."
+          >
+            {isLoading ? (
+              <div className="empty-state">Loading budgets...</div>
+            ) : (
+              <BudgetPlansList budgets={visibleBudgets} onEdit={setEditingBudget} onDelete={handleDelete} />
+            )}
+          </ReportPanel>
+        </div>
       </div>
     </section>
   )

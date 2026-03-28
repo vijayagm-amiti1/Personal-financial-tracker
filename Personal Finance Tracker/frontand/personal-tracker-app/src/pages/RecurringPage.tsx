@@ -1,14 +1,21 @@
 import { useMemo, useState } from 'react'
+import RecurringMonthOverview from '../components/recurring/RecurringMonthOverview'
 import RecurringFormPanel from '../components/recurring/RecurringFormPanel'
 import RecurringPlansList from '../components/recurring/RecurringPlansList'
 import ReportPanel from '../components/reports/ReportPanel'
 import useDevelopmentBootstrap from '../hooks/useDevelopmentBootstrap'
 import useRecurringData from '../hooks/useRecurringData'
+import useTransactionsData from '../hooks/useTransactionsData'
 import type { RecurringFormValues, RecurringRecord } from '../types/recurring'
 
 function RecurringPage() {
-  const { user, activeAccounts, categories } = useDevelopmentBootstrap()
+  const { user, activeAccounts, writableAccounts, categories } = useDevelopmentBootstrap()
   const { items, isLoading, error, saveRecurringItem, deleteRecurringItem } = useRecurringData({
+    userId: user.id,
+    accounts: activeAccounts,
+    categories,
+  })
+  const { transactions, isLoading: transactionsLoading } = useTransactionsData({
     userId: user.id,
     accounts: activeAccounts,
     categories,
@@ -69,7 +76,7 @@ function RecurringPage() {
         </p>
       </header>
 
-      <div className="summary-grid">
+      <div className="summary-grid" data-tour="recurring-summary-cards">
         <article className="summary-card summary-card-neutral">
           <p>Recurring rules</p>
           <strong>{summary.total}</strong>
@@ -101,25 +108,42 @@ function RecurringPage() {
         </div>
       ) : null}
 
-      <div className="budget-layout">
-        <RecurringFormPanel
-          accounts={activeAccounts}
-          categories={categories}
-          editingItem={editingItem}
-          onCancel={() => setEditingItem(null)}
-          onSubmit={handleSave}
-        />
-
+      <div data-tour="recurring-month-overview">
         <ReportPanel
-          title="Recurring schedule"
-          subtitle="Each rule stores the next run date. The secured internal recurring job creates normal transactions and advances the schedule."
+          title="This month recurring"
+          subtitle="Clear month view of recurring entries, due dates, completed vs balance count, and the month carrying graph."
         >
-          {isLoading ? (
-            <div className="empty-state">Loading recurring items...</div>
-          ) : (
-            <RecurringPlansList items={items} onEdit={setEditingItem} onDelete={handleDelete} />
-          )}
+          <RecurringMonthOverview
+            items={items}
+            transactions={transactions}
+            isLoading={isLoading || transactionsLoading}
+          />
         </ReportPanel>
+      </div>
+
+      <div className="budget-layout">
+        <div data-tour="recurring-form-panel">
+          <RecurringFormPanel
+            accounts={writableAccounts}
+            categories={categories}
+            editingItem={editingItem}
+            onCancel={() => setEditingItem(null)}
+            onSubmit={handleSave}
+          />
+        </div>
+
+        <div data-tour="recurring-schedule-list">
+          <ReportPanel
+            title="Recurring schedule"
+            subtitle="Each rule stores the next run date. The secured internal recurring job creates normal transactions and advances the schedule."
+          >
+            {isLoading ? (
+              <div className="empty-state">Loading recurring items...</div>
+            ) : (
+              <RecurringPlansList items={items} onEdit={setEditingItem} onDelete={handleDelete} />
+            )}
+          </ReportPanel>
+        </div>
       </div>
     </section>
   )

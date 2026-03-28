@@ -66,6 +66,8 @@ function mapTransactionPayload(payload: unknown): TransactionRecord[] {
       merchant: record.merchant ? String(record.merchant) : null,
       note: record.note ? String(record.note) : null,
       paymentMethod: record.paymentMethod ? String(record.paymentMethod) : null,
+      tags: Array.isArray(record.tags) ? record.tags.map((tag) => String(tag)) : [],
+      isRecurred: Boolean(record.isRecurred),
       createdAt: String(record.createdAt),
       updatedAt: String(record.updatedAt),
     }

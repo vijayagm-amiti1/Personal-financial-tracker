@@ -2,12 +2,16 @@ package com.example.financeTracker.controller;
 
 import com.example.financeTracker.DTO.ResponseDTO.CategorySpendingReportDTO;
 import com.example.financeTracker.DTO.ResponseDTO.DailyReportDTO;
+import com.example.financeTracker.DTO.ResponseDTO.NetWorthReportResponseDTO;
+import com.example.financeTracker.DTO.ResponseDTO.TrendReportResponseDTO;
 import com.example.financeTracker.Security.CurrentUserProvider;
 import com.example.financeTracker.Service.ReportService;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,5 +51,24 @@ public class ReportController {
         List<CategorySpendingReportDTO> response =
                 reportService.getMonthlyCategorySpendingReport(userId, accountId, month, year);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/trends")
+    public ResponseEntity<TrendReportResponseDTO> getTrendReport(Authentication authentication,
+                                                                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                                                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                                                                 @RequestParam(required = false) UUID accountId,
+                                                                 @RequestParam(required = false) UUID categoryId) {
+        UUID userId = currentUserProvider.getCurrentUserId(authentication);
+        return ResponseEntity.ok(reportService.getTrendReport(userId, from, to, accountId, categoryId));
+    }
+
+    @GetMapping("/net-worth")
+    public ResponseEntity<NetWorthReportResponseDTO> getNetWorthReport(Authentication authentication,
+                                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                                                                       @RequestParam(required = false) UUID accountId) {
+        UUID userId = currentUserProvider.getCurrentUserId(authentication);
+        return ResponseEntity.ok(reportService.getNetWorthReport(userId, from, to, accountId));
     }
 }

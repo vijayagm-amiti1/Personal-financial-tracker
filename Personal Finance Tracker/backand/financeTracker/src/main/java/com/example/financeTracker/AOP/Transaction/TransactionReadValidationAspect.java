@@ -2,9 +2,9 @@ package com.example.financeTracker.AOP.Transaction;
 
 import com.example.financeTracker.Exception.BadRequestException;
 import com.example.financeTracker.Exception.ResourceNotFoundException;
-import com.example.financeTracker.Repository.AccountRepository;
 import com.example.financeTracker.Repository.TransactionRepository;
 import com.example.financeTracker.Repository.UserRepository;
+import com.example.financeTracker.Service.AccountSharingService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +20,8 @@ import org.springframework.stereotype.Component;
 public class TransactionReadValidationAspect {
 
     private final UserRepository userRepository;
-    private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final AccountSharingService accountSharingService;
 
     @Before("execution(* com.example.financeTracker.Service.TransactionService.getTransactionResponsesByUserId(..)) && args(userId)")
     public void validateGetByUser(JoinPoint joinPoint, UUID userId) {
@@ -45,9 +45,7 @@ public class TransactionReadValidationAspect {
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("User not found");
         }
-        if (accountRepository.findByIdAndUserId(accountId, userId).isEmpty()) {
-            throw new ResourceNotFoundException("Account not found for this user");
-        }
+        accountSharingService.requireAccessibleAccount(accountId, userId);
         log.debug("Validated get transactions by account request for user {} in {}", userId, joinPoint.getSignature().toShortString());
     }
 
@@ -62,7 +60,7 @@ public class TransactionReadValidationAspect {
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("User not found");
         }
-        if (transactionRepository.findByIdAndUserId(transactionId, userId).isEmpty()) {
+        if (transactionRepository.findById(transactionId).isEmpty()) {
             throw new ResourceNotFoundException("Transaction not found for this user");
         }
         log.debug("Validated get transaction by id request for user {} in {}", userId, joinPoint.getSignature().toShortString());

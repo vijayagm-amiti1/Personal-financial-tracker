@@ -33,7 +33,7 @@ function formatTransactionType(type: TransactionRecord['type']) {
 
 function TransactionsPage() {
   const navigate = useNavigate()
-  const { user, accounts, activeAccounts, categories, createCategory } = useDevelopmentBootstrap()
+  const { user, accounts, activeAccounts, writableAccounts, categories, createCategory } = useDevelopmentBootstrap()
   const [editingTransaction, setEditingTransaction] = useState<TransactionRecord | null>(null)
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -167,7 +167,7 @@ function TransactionsPage() {
 
       {editingTransaction ? (
         <TransactionFormPanel
-          accounts={activeAccounts}
+          accounts={writableAccounts}
           categories={categories}
           editingTransaction={editingTransaction}
           onCreateCategory={createCategory}

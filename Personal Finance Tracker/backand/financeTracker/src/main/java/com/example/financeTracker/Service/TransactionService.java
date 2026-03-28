@@ -10,7 +10,11 @@ import java.util.UUID;
 
 public interface TransactionService {
 
-    TransactionResponse createTransaction(TransactionRequest request, UUID userId);
+    default TransactionResponse createTransaction(TransactionRequest request, UUID userId) {
+        return createTransaction(request, userId, false);
+    }
+
+    TransactionResponse createTransaction(TransactionRequest request, UUID userId, boolean isRecurred);
 
     TransactionResponse updateTransaction(UUID transactionId, TransactionRequest request, UUID userId);
 

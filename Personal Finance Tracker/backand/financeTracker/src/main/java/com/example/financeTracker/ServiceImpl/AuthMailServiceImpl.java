@@ -228,4 +228,38 @@ public class AuthMailServiceImpl implements AuthMailService {
         mailSender.send(message);
         log.info("Sent goal reached email to {}", toEmail);
     }
+
+    @Override
+    public void sendAccountInviteEmail(String toEmail,
+                                       String recipientName,
+                                       String inviterName,
+                                       String accountName,
+                                       String role,
+                                       String inviteLink,
+                                       String expiresAt) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(toEmail);
+        message.setSubject("Account invite: " + accountName);
+        message.setText("""
+                Hi %s,
+
+                %s invited you to join the shared account "%s".
+
+                Role: %s
+                Respond by: %s
+
+                Open the invite here:
+                %s
+                """.formatted(
+                recipientName == null || recipientName.isBlank() ? "there" : recipientName,
+                inviterName,
+                accountName,
+                role,
+                expiresAt,
+                inviteLink
+        ));
+        mailSender.send(message);
+        log.info("Sent account invite email to {}", toEmail);
+    }
 }

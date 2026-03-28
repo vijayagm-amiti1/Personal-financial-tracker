@@ -19,110 +19,218 @@ class ActionProvider {
     }))
   }
 
-  showWelcome = () => {
+  private reply(message: string, widget?: string) {
     this.addMessageToState(
-      this.createChatBotMessage('Choose a help topic below. I can guide you through the main flows in this app.', {
-        widget: 'mainOptions',
-      }),
+      this.createChatBotMessage(message, widget ? { widget } : undefined),
+    )
+  }
+
+  private replyStack(messages: string[], widget?: string) {
+    messages.forEach((message, index) => {
+      this.addMessageToState(
+        this.createChatBotMessage(message, {
+          ...(widget && index === messages.length - 1 ? { widget } : {}),
+        }),
+      )
+    })
+  }
+
+  showWelcome = () => {
+    this.replyStack(
+      [
+        'I can help with the major version 1 and post-version-1 workflows in Personal Finance Tracker.',
+        'Ask about transactions, budgets, goals, recurring items, rules, shared accounts, forecast, health score, insights, Google login, FAQ, or support.',
+      ],
+      'mainOptions',
     )
   }
 
   showGettingStarted = () => {
-    this.addMessageToState(
-      this.createChatBotMessage(
-        'Start with Accounts, then add Categories, then record Transactions. After that you can create Budgets, Goals, and Recurring plans.',
-        { widget: 'quickLinks' },
-      ),
+    this.replyStack(
+      [
+        'Best setup order: Accounts -> Categories -> Transactions -> Budgets -> Goals -> Recurring -> Rules -> Reports and Insights.',
+        'That sequence gives the app cleaner balances, better categorization, stronger forecast quality, and a more reliable Financial Health Score.',
+      ],
+      'gettingStartedOptions',
     )
   }
 
   showTransactions = () => {
-    this.addMessageToState(
-      this.createChatBotMessage(
-        'Open Transactions, click Add Transaction, choose type, amount, date, account, and category, then save. Expense transactions can also update budget alerts automatically.',
-        { widget: 'transactionOptions' },
-      ),
+    this.replyStack(
+      [
+        'Transactions support income, expense, transfer, and goal-contribution flows.',
+        'Account selectors only show accounts the user can actively operate, and rule suggestions can auto-suggest category or tags while the form is being filled.',
+        'If an old rule no longer matches after a field change, the previous auto-suggestion is cleared and the current matching rule is applied instead.',
+      ],
+      'transactionOptions',
     )
   }
 
   showBudgets = () => {
-    this.addMessageToState(
-      this.createChatBotMessage(
-        'Budgets are monthly category plans. Create a budget for a category, set the amount and alert threshold, then expense transactions in the same month and category will update the spend.',
-        { widget: 'budgetOptions' },
-      ),
+    this.replyStack(
+      [
+        'Budgets are monthly category limits and only expense activity affects them.',
+        'Threshold and exceeded conditions can create in-app notifications and, when enabled in settings, email alerts too.',
+      ],
+      'budgetOptions',
     )
   }
 
   showGoals = () => {
-    this.addMessageToState(
-      this.createChatBotMessage(
-        'Goals are linked to an account. Create the goal with target amount and date, then contribute money from an account to move the current amount forward.',
-        { widget: 'goalOptions' },
-      ),
+    this.replyStack(
+      [
+        'Goals are linked to an account and progress through contributions.',
+        'Contributions move through the normal transaction pipeline so balances, reports, and goal totals stay aligned.',
+      ],
+      'goalOptions',
     )
   }
 
   showReports = () => {
-    this.addMessageToState(
-      this.createChatBotMessage(
-        'Reports use active-account transactions to show daily income and expense trends plus category spending for the selected month and account filter.',
-        { widget: 'reportOptions' },
-      ),
+    this.replyStack(
+      [
+        'Reports focus on operational month views such as daily income vs expense and category spending.',
+        'For deeper analysis like long-term trends, net worth, and readable findings, use the Insights page.',
+      ],
+      'reportOptions',
+    )
+  }
+
+  showInsights = () => {
+    this.replyStack(
+      [
+        'Insights adds advanced analysis: income vs expense over months, category trends, net worth tracking, and readable findings like rising spending or improved savings.',
+        'If you do not see many insights yet, the usual reason is sparse or very new transaction history.',
+      ],
+      'insightOptions',
+    )
+  }
+
+  showForecast = () => {
+    this.replyStack(
+      [
+        'Cash Flow Forecast estimates projected end-of-month balance, upcoming recurring pressure, and safe-to-spend amount.',
+        'It combines current balances, upcoming recurring transactions, and historical non-recurring spending behavior.',
+        'If recurring obligations are not safely covered, the dashboard shows an insufficient recurring payments warning.',
+      ],
+      'forecastOptions',
+    )
+  }
+
+  showFinancialHealth = () => {
+    this.replyStack(
+      [
+        'Financial Health Score is a weighted score built from savings rate, budget adherence, cash buffer, and expense stability.',
+        'It usually improves when savings rise, budgets are respected, balances stay stronger, and spending becomes less erratic.',
+        'It often falls when expenses rise too fast, budgets are exceeded, cash reserves weaken, or spending becomes unstable month to month.',
+      ],
+      'financialHealthOptions',
     )
   }
 
   showRecurring = () => {
-    this.addMessageToState(
-      this.createChatBotMessage(
-        'Recurring items create scheduled income or expense transactions. When processed on or after next run date, they create a normal transaction and continue the same account, budget, and notification flow.',
-        { widget: 'recurringOptions' },
-      ),
+    this.replyStack(
+      [
+        'Recurring items define scheduled income or expense behavior.',
+        'When the internal recurring job runs on or after the next run date, it creates a normal transaction and marks that transaction as recurring-generated for reporting and forecast logic.',
+        'The dedicated month view helps users review what is already done this month and what is still upcoming.',
+      ],
+      'recurringOptions',
+    )
+  }
+
+  showRules = () => {
+    this.replyStack(
+      [
+        'Rules let users automate categorization, tags, and alerts through condition-action logic.',
+        'Rules are managed on the separate Rules page, while the transaction form uses them as live frontend auto-suggestions.',
+        'For the same condition and same action type, conflicting alternate action values are not allowed, which keeps rule behavior predictable.',
+      ],
+      'ruleOptions',
     )
   }
 
   showAccounts = () => {
-    this.addMessageToState(
-      this.createChatBotMessage(
-        'Accounts hold opening and current balance. Opening balance is fixed at creation. Deleting an account hides it from active flows while preserving history where needed.',
-        { widget: 'accountOptions' },
-      ),
+    this.replyStack(
+      [
+        'Accounts drive most money movement in the app and are also the base for balance, forecast, and net-worth views.',
+        'Shared accounts support roles, and view-only members should not be able to pick those accounts in write-action forms.',
+      ],
+      'accountOptions',
+    )
+  }
+
+  showSharing = () => {
+    this.replyStack(
+      [
+        'Account sharing supports invites and role-based access.',
+        'Owners can manage and use the account in write flows, while view-only users can see the account but cannot use it for transactions, recurring items, or goal contributions.',
+      ],
+      'sharingOptions',
     )
   }
 
   showSettings = () => {
-    this.addMessageToState(
-      this.createChatBotMessage(
-        'Settings let you update your display name, notification preferences, and create categories directly from one place.',
-        { widget: 'settingsOptions' },
-      ),
+    this.replyStack(
+      [
+        'Settings controls profile details, notification preferences, email behavior, and layout choices.',
+        'Rules are not edited directly in Settings. Settings only gives entry into the dedicated Rules management page.',
+      ],
+      'settingsOptions',
+    )
+  }
+
+  showAuth = () => {
+    this.replyStack(
+      [
+        'The app supports password login and Google login.',
+        'Sessions are backend cookie-based. If login succeeds and `/api/auth/me` still returns unauthorized, the usual cause is cookie or OAuth session handoff, not the login button itself.',
+      ],
+      'authOptions',
     )
   }
 
   showSupport = () => {
-    this.addMessageToState(
-      this.createChatBotMessage(
-        'If you are stuck, open FAQ, Help, or Report Issue from the profile menu. Report Issue sends your message to support email from inside the app.',
-        { widget: 'supportOptions' },
-      ),
+    this.replyStack(
+      [
+        'Use FAQ when you want expected behavior, Help when you want setup guidance, and Report Issue when you need to send a detailed bug report.',
+        'Good issue reports include page name, steps, expected result, and actual result.',
+      ],
+      'supportOptions',
     )
   }
 
   showNavigationHelp = () => {
-    this.addMessageToState(
-      this.createChatBotMessage(
-        'Use the quick links below to jump directly to the page you need, or go back to the main help topics.',
-        { widget: 'quickLinks' },
-      ),
+    this.reply(
+      'Use the quick links below to jump directly into the right module.',
+      'quickLinks',
+    )
+  }
+
+  showScoreTips = () => {
+    this.replyStack(
+      [
+        'Fast ways to improve the Financial Health Score: keep transactions accurate, reduce avoidable spending, stay within budgets, keep recurring commitments realistic, and build stronger balances.',
+        'The score does not move from one tiny action alone. It usually changes when patterns improve across savings, budget usage, and balance health.',
+      ],
+      'financialHealthOptions',
+    )
+  }
+
+  showForecastQuality = () => {
+    this.replyStack(
+      [
+        'Forecast quality improves when current balances are accurate, recurring schedules are correct, and manual spending is recorded consistently.',
+        'New users or sparse-history users may see simpler fallback forecasting until enough data is available.',
+      ],
+      'forecastOptions',
     )
   }
 
   showFallback = () => {
-    this.addMessageToState(
-      this.createChatBotMessage(
-        'I did not match that request. Use the options below and I will guide you to the right area.',
-        { widget: 'mainOptions' },
-      ),
+    this.reply(
+      'I did not match that clearly. Try topics like transactions, rules, recurring, forecast, health score, insights, shared accounts, Google login, FAQ, or support.',
+      'mainOptions',
     )
   }
 }

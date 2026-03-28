@@ -3,6 +3,7 @@ package com.example.financeTracker.DTO.ResponseDTO;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,6 +28,8 @@ public class TransactionResponse {
     private String merchant;
     private String note;
     private String paymentMethod;
+    private List<String> tags;
+    private boolean isRecurred;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

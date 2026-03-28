@@ -63,6 +63,7 @@ function GoalContributionPanel({
             <label className="field">
               <span>Account</span>
               <select value={accountId} onChange={(event) => setAccountId(event.target.value)}>
+                <option value="">Select account</option>
                 {accounts.map((account) => (
                   <option key={account.id} value={account.id}>
                     {account.name}

@@ -22,7 +22,10 @@ function FinanceAssistant() {
         aria-expanded={isOpen}
         onClick={() => setIsOpen((current) => !current)}
       >
-        {isOpen ? <X size={22} /> : <MessageCircle size={22} />}
+        <span className="chatbot-launcher-copy">
+          <span className="chatbot-launcher-icon">{isOpen ? <X size={22} /> : <MessageCircle size={22} />}</span>
+          <span className="chatbot-launcher-text">{isOpen ? 'Close Guide' : 'Ask Tracker'}</span>
+        </span>
       </button>
     </div>
   )

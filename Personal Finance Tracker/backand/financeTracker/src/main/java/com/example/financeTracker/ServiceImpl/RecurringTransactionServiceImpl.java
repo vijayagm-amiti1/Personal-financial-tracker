@@ -4,6 +4,7 @@ import com.example.financeTracker.DTO.RequestDTO.RecurringTransactionRequest;
 import com.example.financeTracker.DTO.RequestDTO.TransactionRequest;
 import com.example.financeTracker.DTO.ResponseDTO.RecurringTransactionResponse;
 import com.example.financeTracker.Entity.Account;
+import com.example.financeTracker.Entity.AccountMemberRole;
 import com.example.financeTracker.Entity.Category;
 import com.example.financeTracker.Entity.NotificationType;
 import com.example.financeTracker.Entity.RecurringTransaction;
@@ -18,6 +19,7 @@ import com.example.financeTracker.Service.NotificationEmailService;
 import com.example.financeTracker.Service.NotificationService;
 import com.example.financeTracker.Service.RecurringTransactionService;
 import com.example.financeTracker.Service.TransactionService;
+import com.example.financeTracker.Service.AccountSharingService;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +45,7 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
     private final NotificationService notificationService;
     private final NotificationEmailService notificationEmailService;
     private final NotificationRepository notificationRepository;
+    private final AccountSharingService accountSharingService;
 
     @Override
     @Transactional
@@ -100,7 +103,7 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
     @Override
     public List<RecurringTransactionResponse> getRecurringTransactionResponsesByUserId(UUID userId) {
         List<RecurringTransactionResponse> responses = new ArrayList<>();
-        for (RecurringTransaction recurringTransaction : recurringTransactionRepository.findAllByUserId(userId)) {
+        for (RecurringTransaction recurringTransaction : recurringTransactionRepository.findAllAccessibleByUserId(userId)) {
             responses.add(mapToResponse(recurringTransaction));
         }
         return responses;
@@ -108,7 +111,7 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
 
     @Override
     public List<RecurringTransaction> getRecurringTransactionsByUserId(UUID userId) {
-        return recurringTransactionRepository.findAllByUserId(userId);
+        return recurringTransactionRepository.findAllAccessibleByUserId(userId);
     }
 
     @Override
@@ -118,7 +121,15 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
 
     @Override
     public Optional<RecurringTransaction> getRecurringTransactionByIdAndUserId(UUID recurringTransactionId, UUID userId) {
-        return recurringTransactionRepository.findByIdAndUserId(recurringTransactionId, userId);
+        return recurringTransactionRepository.findById(recurringTransactionId)
+                .filter(recurringTransaction -> {
+                    try {
+                        accountSharingService.requireAccessibleAccount(recurringTransaction.getAccount().getId(), userId);
+                        return true;
+                    } catch (RuntimeException exception) {
+                        return false;
+                    }
+                });
     }
 
     @Override
@@ -146,7 +157,7 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
                                 .merchant(recurringTransaction.getTitle())
                                 .note("Recurring " + recurringTransaction.getFrequency() + " transaction")
                                 .paymentMethod("recurring_auto")
-                                .build(), recurringTransaction.getUser().getId());
+                                .build(), recurringTransaction.getUser().getId(), true);
                         processedTransactions += 1;
                         createRecurringProcessedNotification(recurringTransaction, recurringTransaction.getNextRunDate());
                     }
@@ -174,7 +185,15 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
     @Override
     @Transactional
     public void deleteRecurringTransaction(UUID recurringTransactionId, UUID userId) {
-        recurringTransactionRepository.findByIdAndUserId(recurringTransactionId, userId)
+        recurringTransactionRepository.findById(recurringTransactionId)
+                .filter(recurringTransaction -> {
+                    try {
+                        ensureCanEdit(recurringTransaction.getAccount(), userId);
+                        return true;
+                    } catch (RuntimeException exception) {
+                        return false;
+                    }
+                })
                 .ifPresent(recurringTransactionRepository::delete);
     }
 
@@ -189,8 +208,15 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
     }
 
     private Account getRequiredAccount(UUID accountId, UUID userId) {
-        return accountRepository.findByIdAndUserIdAndIsActiveTrue(accountId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found for this user"));
+        Account account = accountSharingService.requireAccessibleAccount(accountId, userId);
+        ensureCanEdit(account, userId);
+        return account;
+    }
+
+    private void ensureCanEdit(Account account, UUID userId) {
+        if (accountSharingService.getRoleForAccount(account.getId(), userId) == AccountMemberRole.VIEWER) {
+            throw new ResourceNotFoundException("Account not found for this user");
+        }
     }
 
     private boolean isWithinEndDate(RecurringTransaction recurringTransaction, LocalDate candidateRunDate) {

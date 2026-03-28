@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import ReportPanel from '../components/reports/ReportPanel'
 import { useAuth } from '../auth/AuthProvider'
 import useDevelopmentBootstrap from '../hooks/useDevelopmentBootstrap'
+import { useTheme } from '../theme/ThemeProvider'
 import { authFetch } from '../utils/authFetch'
 import type { UserSettings } from '../types/auth'
 import { CATEGORY_ICON_OPTIONS, renderCategoryIcon } from '../utils/categoryIcons'
@@ -77,6 +79,7 @@ async function extractErrorMessage(response: Response) {
 
 function SettingsPage() {
   const { refreshUser } = useAuth()
+  const { isDarkMode, toggleTheme } = useTheme()
   const { categories, createCategory } = useDevelopmentBootstrap()
   const [settings, setSettings] = useState<UserSettings>(emptySettings)
   const [isLoading, setIsLoading] = useState(true)
@@ -207,10 +210,11 @@ function SettingsPage() {
       </header>
 
       <div className="budget-layout">
-        <ReportPanel
-          title="Profile"
-          subtitle="Display name is shown across the app. Email is your login identity and stays read-only here."
-        >
+        <div data-tour="settings-profile-panel">
+          <ReportPanel
+            title="Profile"
+            subtitle="Display name is shown across the app. Email is your login identity and stays read-only here."
+          >
           {isLoading ? (
             <div className="notification-empty">Loading settings...</div>
           ) : (
@@ -233,6 +237,24 @@ function SettingsPage() {
               </div>
 
               <div className="settings-toggle-list">
+                <label className="settings-toggle-card">
+                  <div>
+                    <strong>Dark mode</strong>
+                    <p>Enable a darker visual theme across the app. When this is off, the default light mode is used.</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isDarkMode}
+                    aria-label="Dark mode"
+                    className={isDarkMode ? 'settings-switch settings-switch-enabled' : 'settings-switch'}
+                    onClick={toggleTheme}
+                  >
+                    <span className="settings-switch-icon">{isDarkMode ? '✓' : ''}</span>
+                    <span className="settings-switch-thumb" />
+                  </button>
+                </label>
+
                 <label className="settings-toggle-card">
                   <div>
                     <strong>Desktop navigation layout</strong>
@@ -300,12 +322,14 @@ function SettingsPage() {
               </div>
             </form>
           )}
-        </ReportPanel>
+          </ReportPanel>
+        </div>
 
-        <ReportPanel
-          title="Categories"
-          subtitle="Create the income and expense categories you want available across transactions, budgets, and recurring plans."
-        >
+        <div data-tour="settings-category-panel">
+          <ReportPanel
+            title="Categories"
+            subtitle="Create the income and expense categories you want available across transactions, budgets, and recurring plans."
+          >
           <form className="transaction-form settings-form" onSubmit={handleCategorySubmit}>
             <div className="transaction-form-grid">
               <label className="field">
@@ -377,6 +401,23 @@ function SettingsPage() {
                 </article>
               ))
             )}
+          </div>
+          </ReportPanel>
+        </div>
+      </div>
+
+      <div data-tour="settings-rules-entry">
+        <ReportPanel
+          title="Automation rules"
+          subtitle="Rules are managed on a separate page so you can create, edit, delete, and disable them without crowding the settings screen."
+        >
+          <div className="settings-rules-entry">
+          <p>
+            Open the dedicated rules management page to create rule conditions, choose actions, change priority, and enable or disable rules.
+          </p>
+          <Link to="/rules" className="primary-button settings-rules-link">
+            Enter rules management
+          </Link>
           </div>
         </ReportPanel>
       </div>

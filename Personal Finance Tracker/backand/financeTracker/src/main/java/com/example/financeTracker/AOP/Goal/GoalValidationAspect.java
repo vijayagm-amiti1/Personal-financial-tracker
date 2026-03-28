@@ -4,9 +4,9 @@ import com.example.financeTracker.DTO.RequestDTO.GoalContributionRequest;
 import com.example.financeTracker.DTO.RequestDTO.GoalRequest;
 import com.example.financeTracker.Exception.BadRequestException;
 import com.example.financeTracker.Exception.ResourceNotFoundException;
-import com.example.financeTracker.Repository.AccountRepository;
 import com.example.financeTracker.Repository.GoalRepository;
 import com.example.financeTracker.Repository.UserRepository;
+import com.example.financeTracker.Service.AccountSharingService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ public class GoalValidationAspect {
 
     private final UserRepository userRepository;
     private final GoalRepository goalRepository;
-    private final AccountRepository accountRepository;
+    private final AccountSharingService accountSharingService;
 
     @Before("execution(* com.example.financeTracker.Service.GoalService.createGoal(..)) && args(request, userId)")
     public void validateCreateGoal(JoinPoint joinPoint, GoalRequest request, UUID userId) {
@@ -40,9 +40,7 @@ public class GoalValidationAspect {
         if (request.getLinkedAccountId() == null) {
             throw new BadRequestException("linkedAccountId is required");
         }
-        if (accountRepository.findByIdAndUserId(request.getLinkedAccountId(), userId).isEmpty()) {
-            throw new ResourceNotFoundException("Linked account not found for this user");
-        }
+        accountSharingService.requireAccessibleAccount(request.getLinkedAccountId(), userId);
         if (goalRepository.findByUserIdAndNameIgnoreCase(userId, request.getName().trim()).isPresent()) {
             throw new BadRequestException("A goal with this name already exists for this user");
         }
@@ -64,12 +62,10 @@ public class GoalValidationAspect {
         if (request.getAmount() == null || request.getAmount().signum() <= 0) {
             throw new BadRequestException("amount must be greater than 0");
         }
-        if (goalRepository.findByIdAndUserId(request.getGoalId(), userId).isEmpty()) {
+        if (goalRepository.findAccessibleByIdAndUserId(request.getGoalId(), userId).isEmpty()) {
             throw new ResourceNotFoundException("Goal not found for this user");
         }
-        if (accountRepository.findByIdAndUserId(request.getAccountId(), userId).isEmpty()) {
-            throw new ResourceNotFoundException("Account not found for this user");
-        }
+        accountSharingService.requireAccessibleAccount(request.getAccountId(), userId);
         log.debug("Validated contribute goal request for user {} in {}", userId, joinPoint.getSignature().toShortString());
     }
 
@@ -79,7 +75,7 @@ public class GoalValidationAspect {
         if (goalId == null) {
             throw new BadRequestException("goalId is required");
         }
-        if (goalRepository.findByIdAndUserId(goalId, userId).isEmpty()) {
+        if (goalRepository.findAccessibleByIdAndUserId(goalId, userId).isEmpty()) {
             throw new ResourceNotFoundException("Goal not found for this user");
         }
         log.debug("Validated delete goal request for user {} in {}", userId, joinPoint.getSignature().toShortString());
